@@ -11,8 +11,7 @@ A Study Managment System For Students in Achademics : Based on Populer Forgettin
 - Manage Your Daily Tasks
 - Manage Your Hobbies
 
-<img width="660" height="666" alt="image" src="https://github.com/user-attachments/assets/0c66b4b1-07a6-4db1-b8dd-ac529cdc922f" />
-
+<img src="https://user-images.githubusercontent.com/74038190/236119160-976a0405-caa7-470c-9356-16d43402ea0a.gif" />
 
 ## How to Install The App
 ________________________________________________________________________________________________
