@@ -44,3 +44,8 @@ Follow these steps to set up the project locally on your machine:
    npm start
    ```
    *Note: This will start the server using `nodemon`, which automatically restarts upon any file changes.*
+
+-------------------------------------------------------------------------------------------------------
+<img width="300" height="300" src="https://user-images.githubusercontent.com/74038190/235224431-e8c8c12e-6826-47f1-89fb-2ddad83b3abf.gif" />
+
+-------------------------------------------------------------------------------------------------------
