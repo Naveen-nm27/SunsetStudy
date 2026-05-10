@@ -12,3 +12,11 @@ export const getUserService = async () => {
 export const getUserByIdService = async(id) => {
     return await User.findById(id);
 }
+
+export const deleteUserByIdService = async(id) => {
+    return await User.findByIdAndDelete(id);
+}
+
+export const updateUserByIdService = async(id,data) =>{
+    return await User.findByIdAndUpdate(id,data,{new:true});
+}
