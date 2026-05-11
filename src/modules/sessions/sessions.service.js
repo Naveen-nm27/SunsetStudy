@@ -1,8 +1,15 @@
+import { advanceTopicReviewSchedule } from "../topics/topics.service.js";
 import { Session } from "./sessions.model.js";
 
 export const createSessionService = async (data) => {
   const session = new Session(data);
-  return await session.save();
+  await session.save();
+
+  if (session.status === "completed" && session.topicObjectId) {
+    await advanceTopicReviewSchedule(session.topicObjectId);
+  }
+
+  return session;
 };
 
 export const getSessionsService = async (filter = {}) => {
@@ -21,7 +28,21 @@ export const getSessionByIdService = async (id) => {
 };
 
 export const updateSessionByIdService = async (id, data) => {
-  return await Session.findByIdAndUpdate(id, data, { new: true })
+  const session = await Session.findById(id);
+  if (!session) return null;
+
+  const wasCompleted = session.status === "completed";
+  const nextStatus = data.status !== undefined ? data.status : session.status;
+  const becomingCompleted = !wasCompleted && nextStatus === "completed";
+
+  Object.assign(session, data);
+  await session.save();
+
+  if (becomingCompleted && session.topicObjectId) {
+    await advanceTopicReviewSchedule(session.topicObjectId);
+  }
+
+  return await Session.findById(session._id)
     .populate("userObjectId")
     .populate("subjectObjectId")
     .populate("topicObjectId");

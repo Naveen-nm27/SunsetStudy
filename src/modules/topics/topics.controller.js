@@ -2,6 +2,7 @@ import {
   createTopicService,
   deleteTopicByIdService,
   getTopicByIdService,
+  getTopicsDueTodayService,
   getTopicsService,
   updateTopicByIdService,
 } from "./topics.service.js";
@@ -10,6 +11,20 @@ export const createTopic = async (req, res) => {
   try {
     const topic = await createTopicService(req.body);
     res.status(201).json(topic);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getTopicsDueToday = async (req, res) => {
+  try {
+    const { userObjectId } = req.query;
+    if (!userObjectId) {
+      return res.status(400).json({ message: "userObjectId query parameter is required" });
+    }
+
+    const topics = await getTopicsDueTodayService(userObjectId);
+    res.status(200).json(topics);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

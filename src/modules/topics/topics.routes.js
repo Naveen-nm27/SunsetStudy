@@ -4,12 +4,14 @@ import {
   deleteTopic,
   getTopicById,
   getTopics,
+  getTopicsDueToday,
   updateTopic,
 } from "./topics.controller.js";
 
 const router = express.Router();
 
 router.post("/", createTopic);
+router.get("/due-today", getTopicsDueToday);
 router.get("/", getTopics);
 router.get("/:id", getTopicById);
 router.patch("/:id", updateTopic);
