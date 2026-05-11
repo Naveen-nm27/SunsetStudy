@@ -6,13 +6,14 @@ import {
   getSubjects,
   updateSubject,
 } from "./subjects.controller.js";
+import { createSubjectSchema, updateSubjectSchema, validate } from "./subjects.validation.js";
 
 const router = express.Router();
 
-router.post("/", createSubject);
+router.post("/", validate(createSubjectSchema), createSubject);
 router.get("/", getSubjects);
 router.get("/:id", getSubjectById);
-router.patch("/:id", updateSubject);
+router.patch("/:id", validate(updateSubjectSchema), updateSubject);
 router.delete("/:id", deleteSubject);
 
 export default router;

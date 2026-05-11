@@ -6,13 +6,14 @@ import {
   getSessions,
   updateSession,
 } from "./sessions.controller.js";
+import { createSessionSchema, updateSessionSchema, validate } from "./sessions.validation.js";
 
 const router = express.Router();
 
-router.post("/", createSession);
+router.post("/", validate(createSessionSchema), createSession);
 router.get("/", getSessions);
 router.get("/:id", getSessionById);
-router.patch("/:id", updateSession);
+router.patch("/:id", validate(updateSessionSchema), updateSession);
 router.delete("/:id", deleteSession);
 
 export default router;

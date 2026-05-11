@@ -23,5 +23,8 @@
     "express": "^5.2.1",
     "mongoose": "^9.6.1",
     "nodemon": "^3.1.14"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }
