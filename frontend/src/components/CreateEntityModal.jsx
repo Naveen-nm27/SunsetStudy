@@ -5,7 +5,7 @@ import api from '../api';
 import moment from 'moment';
 import { subjectIdOf } from '../utils/topic';
 
-export default function CreateEntityModal({ type, onClose, onSuccess, userObjectId, subjects, topics }) {
+export default function CreateEntityModal({ type, onClose, onSuccess, userObjectId, subjects, topics, sessionPrefill }) {
   const [formData, setFormData] = useState({});
   const [error, setError] = useState('');
   
@@ -16,13 +16,21 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
     } else if (type === 'topic') {
       setFormData({ name: '', subjectObjectId: subjects[0]?._id || '', userObjectId });
     } else if (type === 'session') {
-      setFormData({ 
-        subjectObjectId: subjects[0]?._id || '', 
-        topicObjectId: topics[0]?._id || '', 
-        date: moment().format('YYYY-MM-DD'), 
-        startTime: '09:00', 
-        endTime: '10:00', 
-        userObjectId 
+      const pf = sessionPrefill || {};
+      const defaultSubject = pf.subjectObjectId || subjects[0]?._id || '';
+      const related = topics.filter((t) => subjectIdOf(t) === defaultSubject);
+      const defaultTopic =
+        (pf.topicObjectId && related.some((t) => t._id === pf.topicObjectId) ? pf.topicObjectId : null) ||
+        related[0]?._id ||
+        topics[0]?._id ||
+        '';
+      setFormData({
+        subjectObjectId: defaultSubject,
+        topicObjectId: defaultTopic,
+        date: pf.date || moment().format('YYYY-MM-DD'),
+        startTime: pf.startTime || '09:00',
+        endTime: pf.endTime || '10:00',
+        userObjectId,
       });
     } else if (type === 'block') {
       setFormData({ 
@@ -34,7 +42,7 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
         userObjectId 
       });
     }
-  }, [type, userObjectId, subjects, topics]);
+  }, [type, userObjectId, subjects, topics, sessionPrefill]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,13 +140,26 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
               </div>
               <div>
                 <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Topic</label>
-                <select required className="w-full rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 focus:border-sunset-orange outline-none font-sans text-text-main tracking-tight" value={formData.topicObjectId || ''} onChange={e => setFormData({...formData, topicObjectId: e.target.value})}>
-                  {topics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).map((t) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                {topics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0 ? (
+                  <p className="text-sm text-text-muted rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 leading-relaxed">
+                    No topics under this subject yet. Add a topic in the library and pick this subject, then create a session.
+                  </p>
+                ) : (
+                  <select
+                    required
+                    className="w-full rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 focus:border-sunset-orange outline-none font-sans text-text-main tracking-tight"
+                    value={formData.topicObjectId || ''}
+                    onChange={(e) => setFormData({ ...formData, topicObjectId: e.target.value })}
+                  >
+                    {topics
+                      .filter((t) => subjectIdOf(t) === formData.subjectObjectId)
+                      .map((t) => (
+                        <option key={t._id} value={t._id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Date</label>
@@ -191,7 +212,11 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
             </>
           )}
 
-          <button type="submit" className="fun-button w-full mt-6 text-base">
+          <button
+            type="submit"
+            disabled={type === 'session' && topics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0}
+            className="fun-button w-full mt-6 text-base disabled:opacity-45 disabled:pointer-events-none"
+          >
             Save {type}
           </button>
         </form>

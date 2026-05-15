@@ -4,6 +4,7 @@ import moment from 'moment';
 import { Plus, Trash2, Brain } from 'lucide-react';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
+import SessionStudyTimer from '../components/SessionStudyTimer';
 import { topicIdFromSession } from '../utils/topic';
 
 export default function SessionsPage() {
@@ -113,7 +114,10 @@ export default function SessionsPage() {
               const tname = s.topicObjectId?.name || topics.find((t) => t._id === tid)?.name || 'Topic';
               return (
                 <tr key={s._id} className="border-b border-border-color last:border-0 hover:bg-bg-card/50">
-                  <td className="p-3 font-mono text-xs whitespace-nowrap">{moment(s.date).format('MMM D, YYYY')}</td>
+                  <td className="p-3 font-mono text-xs whitespace-nowrap align-top">
+                    <div>{moment(s.date).format('MMM D, YYYY')}</div>
+                    <SessionStudyTimer key={s._id} session={s} onComplete={() => mark(s._id, 'completed')} />
+                  </td>
                   <td className="p-3 font-serif">{tname}</td>
                   <td className="p-3 font-mono text-xs whitespace-nowrap">
                     {s.startTime} – {s.endTime}

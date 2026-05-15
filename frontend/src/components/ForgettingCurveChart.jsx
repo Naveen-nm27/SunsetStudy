@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import moment from 'moment';
+import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { topicIdFromSession } from '../utils/topic';
 
 const TAU_DAYS = 5;
 const PAD = { top: 24, right: 28, bottom: 44, left: 52 };
 const W = 720;
 const H = 320;
+const MAX_PROJECTED_REVIEWS = 10;
 
 function startOfDayMs(d) {
   return moment(d).startOf('day').valueOf();
@@ -22,16 +24,38 @@ function buildPath(points) {
     .join(' ');
 }
 
+/** One decay segment per completed session — avoids a single flat line across the whole timeline. */
+function buildDecaySegments(completions, xMaxMs, xScale, yScale, stepMs = 36e5 * 3) {
+  if (!completions.length) return [];
+  const segments = [];
+  for (let i = 0; i < completions.length; i++) {
+    const anchor = completions[i].t;
+    const endT = i < completions.length - 1 ? completions[i + 1].t : xMaxMs;
+    const pts = [];
+    for (let t = anchor; t <= endT; t += stepMs) {
+      const daysSince = (t - anchor) / 86400000;
+      const r = retentionAfterGap(daysSince);
+      pts.push({ x: xScale(t), y: yScale(r), t });
+    }
+    if (pts.length === 0 || pts[pts.length - 1].t < endT) {
+      const daysSince = (endT - anchor) / 86400000;
+      pts.push({ x: xScale(endT), y: yScale(retentionAfterGap(daysSince)), t: endT });
+    }
+    if (pts.length > 0) segments.push(buildPath(pts));
+  }
+  return segments;
+}
+
 /**
- * Piecewise exponential decay: after each completed session, retention resets to 100% and decays until the next review.
- * Also draws the next scheduled review and optional selected session marker.
+ * Piecewise exponential decay between completed sessions.
+ * Shows scheduled planned sessions and projected future reviews from the spaced-repetition schedule.
  */
-export default function ForgettingCurveChart({ topic, sessions, selectedSessionId }) {
+export default function ForgettingCurveChart({ topic, sessions, selectedSessionId, onScheduleReview }) {
   const topicId = topic?._id;
 
-  const { completions, planned, xMinMs, xMaxMs, points, markers } = useMemo(() => {
+  const chartModel = useMemo(() => {
     if (!topicId) {
-      return { completions: [], planned: [], xMinMs: 0, xMaxMs: 0, points: [], markers: [] };
+      return { completions: [], xMinMs: 0, xMaxMs: 0, pathSegments: [], markers: [], todayRetention: null };
     }
 
     const topicSessions = sessions.filter((s) => topicIdFromSession(s) === topicId);
@@ -40,29 +64,66 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
       .map((s) => ({ ...s, t: startOfDayMs(s.date) }))
       .sort((a, b) => a.t - b.t);
 
-    const planned = topicSessions
+    const plannedRaw = topicSessions
       .filter((s) => s.status === 'planned')
       .map((s) => ({ ...s, t: startOfDayMs(s.date) }))
       .sort((a, b) => a.t - b.t);
 
+    const plannedByDay = new Map();
+    plannedRaw.forEach((p) => {
+      if (!plannedByDay.has(p.t)) plannedByDay.set(p.t, p);
+    });
+
     if (completions.length === 0) {
-      return { completions: [], planned, xMinMs: 0, xMaxMs: 0, points: [], markers: [] };
+      return { completions: [], xMinMs: 0, xMaxMs: 0, pathSegments: [], markers: [], todayRetention: null };
     }
 
     const firstT = completions[0].t;
     const lastT = completions[completions.length - 1].t;
-    const nextReviewMs = topic.nextReviewDate ? startOfDayMs(topic.nextReviewDate) : null;
-    const lastPlanned = planned.length ? planned[planned.length - 1].t : null;
+    const stage = topic.reviewStage ?? 0;
 
-    let xMaxMs = Math.max(
-      lastT,
-      nextReviewMs || 0,
-      lastPlanned || 0,
-      moment().startOf('day').valueOf()
-    );
-    xMaxMs = moment(xMaxMs).add(14, 'days').valueOf();
+    const intervalIdx = (s) => Math.min(s, REVIEW_INTERVAL_DAYS.length - 1);
 
-    const xMinMs = moment(firstT).subtract(2, 'days').valueOf();
+    let firstReviewMs;
+    if (topic.nextReviewDate) {
+      firstReviewMs = startOfDayMs(topic.nextReviewDate);
+      if (firstReviewMs < lastT) {
+        firstReviewMs = moment(lastT).add(REVIEW_INTERVAL_DAYS[intervalIdx(stage)], 'days').startOf('day').valueOf();
+      }
+    } else {
+      firstReviewMs = moment(lastT).add(REVIEW_INTERVAL_DAYS[intervalIdx(stage)], 'days').startOf('day').valueOf();
+    }
+
+    const projected = [];
+    let sCursor = stage;
+    let cursorMs = firstReviewMs;
+    for (let i = 0; i < MAX_PROJECTED_REVIEWS; i++) {
+      projected.push(cursorMs);
+      const idx = intervalIdx(sCursor);
+      cursorMs = moment(cursorMs).add(REVIEW_INTERVAL_DAYS[idx], 'days').startOf('day').valueOf();
+      sCursor += 1;
+    }
+
+    const todayMs = moment().startOf('day').valueOf();
+    const nextReviewMs = firstReviewMs;
+
+    let xMinMs = moment(firstT).subtract(1, 'day').valueOf();
+    let xMaxMs = moment(
+      Math.max(lastT, todayMs, nextReviewMs, ...plannedRaw.map((p) => p.t), projected[0] || 0)
+    )
+      .add(7, 'days')
+      .valueOf();
+
+    const MAX_SPAN_MS = 42 * 86400000;
+    if (xMaxMs - xMinMs > MAX_SPAN_MS) {
+      xMinMs = moment(lastT).subtract(2, 'days').valueOf();
+      xMaxMs = moment(Math.max(nextReviewMs, todayMs, lastT)).add(10, 'days').valueOf();
+      if (completions.length > 1) {
+        xMinMs = moment(firstT).subtract(1, 'day').valueOf();
+        xMaxMs = Math.min(xMaxMs, moment(lastT).add(28, 'days').valueOf());
+      }
+    }
+
     const span = Math.max(1, xMaxMs - xMinMs);
 
     const innerW = W - PAD.left - PAD.right;
@@ -71,22 +132,11 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
     const xScale = (ms) => PAD.left + ((ms - xMinMs) / span) * innerW;
     const yScale = (pct) => PAD.top + innerH * (1 - pct / 100);
 
-    const pts = [];
-    const stepMs = 36e5 * 6;
-    for (let t = xMinMs; t <= xMaxMs; t += stepMs) {
-      let lastComp = null;
-      for (const c of completions) {
-        if (c.t <= t) lastComp = c.t;
-        else break;
-      }
-      if (lastComp === null) {
-        pts.push({ x: xScale(t), y: yScale(100), t });
-        continue;
-      }
-      const daysSince = (t - lastComp) / 86400000;
-      const r = retentionAfterGap(daysSince);
-      pts.push({ x: xScale(t), y: yScale(r), t });
-    }
+    const pathSegments = buildDecaySegments(completions, xMaxMs, xScale, yScale);
+
+    const daysSinceLastStudy = (todayMs - lastT) / 86400000;
+    const todayRetention =
+      todayMs >= xMinMs && todayMs <= xMaxMs ? Math.round(retentionAfterGap(Math.max(0, daysSinceLastStudy))) : null;
 
     const markers = [];
 
@@ -101,15 +151,47 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
       });
     });
 
-    if (nextReviewMs) {
-      const lastComp = completions[completions.length - 1].t;
-      const daysSince = (nextReviewMs - lastComp) / 86400000;
+    plannedByDay.forEach((p) => {
+      let lastComp = null;
+      for (const c of completions) {
+        if (c.t <= p.t) lastComp = c.t;
+        else break;
+      }
+      const daysSince = lastComp !== null ? (p.t - lastComp) / 86400000 : 0;
       markers.push({
-        kind: 'next',
-        t: nextReviewMs,
-        x: xScale(nextReviewMs),
-        y: yScale(retentionAfterGap(daysSince)),
-        label: `Review ${moment(nextReviewMs).format('MMM D')}`,
+        kind: 'planned',
+        t: p.t,
+        x: xScale(p.t),
+        y: yScale(lastComp !== null ? retentionAfterGap(daysSince) : 100),
+        label: `Scheduled ${moment(p.t).format('MMM D')}`,
+        sessionId: p._id,
+      });
+    });
+
+    projected.forEach((ms) => {
+      if (plannedByDay.has(ms)) return;
+      let lastComp = null;
+      for (const c of completions) {
+        if (c.t <= ms) lastComp = c.t;
+        else break;
+      }
+      const daysSince = lastComp !== null ? (ms - lastComp) / 86400000 : 0;
+      markers.push({
+        kind: 'projected',
+        t: ms,
+        x: xScale(ms),
+        y: yScale(lastComp !== null ? retentionAfterGap(daysSince) : 100),
+        label: `Review ${moment(ms).format('MMM D')}`,
+      });
+    });
+
+    if (todayRetention !== null) {
+      markers.push({
+        kind: 'today',
+        t: todayMs,
+        x: xScale(todayMs),
+        y: yScale(todayRetention),
+        label: `Today · ~${todayRetention}%`,
       });
     }
 
@@ -137,13 +219,15 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
 
     return {
       completions,
-      planned,
       xMinMs,
       xMaxMs,
-      points: pts,
+      pathSegments,
       markers,
+      todayRetention,
     };
   }, [topic, topicId, sessions, selectedSessionId]);
+
+  const { completions, xMinMs, xMaxMs, pathSegments, markers, todayRetention } = chartModel;
 
   if (!topicId) return null;
 
@@ -153,17 +237,23 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
         <p className="font-serif text-lg text-text-main mb-2">No completed sessions yet</p>
         <p className="font-mono text-sm text-text-muted uppercase tracking-wide max-w-md mx-auto leading-relaxed">
           Complete at least one study session for this topic. The curve shows how memory decays between reviews and
-          where your next review lands.
+          where your upcoming reviews land.
         </p>
       </div>
     );
   }
 
-  const pathD = buildPath(points);
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
   const yTicks = [100, 75, 50, 25, 0];
   const xLabelY = H - 8;
+
+  const handleReviewClick = (m) => {
+    if (!onScheduleReview) return;
+    if (m.kind === 'planned' || m.kind === 'projected') {
+      onScheduleReview({ dateMs: m.t });
+    }
+  };
 
   return (
     <div className="fun-card p-4 md:p-6 w-full overflow-x-auto">
@@ -171,21 +261,33 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
         <div>
           <h3 className="text-xl font-serif font-bold text-sunset-orange">Forgetting curve</h3>
           <p className="font-mono text-xs uppercase tracking-widest text-text-muted mt-1 leading-relaxed">
-            Model: exponential decay (τ = {TAU_DAYS}d) between completed sessions — illustrative, not clinical.
+            Model: exponential decay (τ = {TAU_DAYS}d) after each completed session — resets to 100% on review.
+            {todayRetention !== null && (
+              <span className="block normal-case mt-1 text-sunset-orange">
+                Estimated retention today: ~{todayRetention}%
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-4 font-mono text-xs uppercase text-text-muted leading-relaxed">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 font-mono text-xs uppercase text-text-muted leading-relaxed">
           <span className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full bg-sunset-pink" /> Completed
           </span>
           <span className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded-full bg-sunset-yellow" /> Next review
+            <span className="inline-block w-3 h-3 rounded-full bg-sunset-yellow" /> Scheduled review
           </span>
           <span className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded-full bg-sunset-orange border-2 border-bg-base" /> Selected session
+            <span className="inline-block w-3 h-3 rounded-full bg-sunset-yellow opacity-45 border border-border-color" />{' '}
+            Projected review
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-full bg-sunset-orange border-2 border-bg-base" /> Highlighted
           </span>
         </div>
       </div>
+      <p className="font-mono text-[11px] uppercase text-text-muted mb-3 leading-relaxed">
+        Tap a yellow dot to add another planned session on that date (existing schedule is unchanged).
+      </p>
 
       <svg
         width="100%"
@@ -242,7 +344,17 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
           );
         })}
 
-        <path d={pathD} fill="none" stroke="url(#curveGrad)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {pathSegments.map((d, i) => (
+          <path
+            key={`seg-${i}`}
+            d={d}
+            fill="none"
+            stroke="url(#curveGrad)"
+            strokeWidth="3"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ))}
 
         {[0, 0.25, 0.5, 0.75, 1].map((r) => {
           const ms = xMinMs + (xMaxMs - xMinMs) * r;
@@ -255,9 +367,10 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
         })}
 
         {markers.map((m, i) => {
-          if (m.kind === 'next') {
+          if (m.kind === 'planned') {
             return (
-              <g key={`m-${i}`}>
+              <g key={`planned-${m.sessionId || i}`}>
+                <title>{m.label} — click to add session on this date</title>
                 <line
                   x1={m.x}
                   y1={PAD.top}
@@ -268,14 +381,77 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
                   strokeDasharray="6 4"
                   opacity="0.85"
                 />
-                <circle cx={m.x} cy={m.y} r="6" fill="var(--c-yellow)" stroke="var(--c-bg)" strokeWidth="2" />
+                <circle
+                  cx={m.x}
+                  cy={m.y}
+                  r="7"
+                  fill="var(--c-yellow)"
+                  stroke="var(--c-bg)"
+                  strokeWidth="2"
+                  className={onScheduleReview ? 'cursor-pointer' : ''}
+                  role={onScheduleReview ? 'button' : undefined}
+                  tabIndex={onScheduleReview ? 0 : undefined}
+                  onClick={() => handleReviewClick(m)}
+                  onKeyDown={(e) => {
+                    if (!onScheduleReview) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleReviewClick(m);
+                    }
+                  }}
+                />
+              </g>
+            );
+          }
+          if (m.kind === 'projected') {
+            return (
+              <g key={`proj-${m.t}-${i}`}>
+                <title>{m.label} — click to add session on this date</title>
+                <circle
+                  cx={m.x}
+                  cy={m.y}
+                  r="6"
+                  fill="var(--c-yellow)"
+                  stroke="var(--c-bg)"
+                  strokeWidth="2"
+                  opacity="0.42"
+                  className={onScheduleReview ? 'cursor-pointer hover:opacity-70' : ''}
+                  role={onScheduleReview ? 'button' : undefined}
+                  tabIndex={onScheduleReview ? 0 : undefined}
+                  onClick={() => handleReviewClick(m)}
+                  onKeyDown={(e) => {
+                    if (!onScheduleReview) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleReviewClick(m);
+                    }
+                  }}
+                />
+              </g>
+            );
+          }
+          if (m.kind === 'today') {
+            return (
+              <g key="today-marker">
+                <title>{m.label}</title>
+                <line
+                  x1={m.x}
+                  y1={PAD.top}
+                  x2={m.x}
+                  y2={H - PAD.bottom}
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeDasharray="3 5"
+                  className="opacity-35"
+                />
+                <circle cx={m.x} cy={m.y} r="5" fill="var(--c-bg)" stroke="var(--c-orange)" strokeWidth="2" />
               </g>
             );
           }
           if (m.kind === 'selected') {
             return (
               <circle
-                key={`m-${i}`}
+                key={`sel-${i}`}
                 cx={m.x}
                 cy={m.y}
                 r="8"
@@ -286,16 +462,10 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
             );
           }
           return (
-            <circle
-              key={m.id || i}
-              cx={m.x}
-              cy={m.y}
-              r="5"
-              fill="var(--c-pink)"
-              stroke="var(--c-bg)"
-              strokeWidth="2"
-              opacity="0.9"
-            />
+            <g key={m.id || `done-${i}`}>
+              <title>{m.label}</title>
+              <circle cx={m.x} cy={m.y} r="5" fill="var(--c-pink)" stroke="var(--c-bg)" strokeWidth="2" opacity="0.9" />
+            </g>
           );
         })}
       </svg>

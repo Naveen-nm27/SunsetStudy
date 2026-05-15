@@ -1,19 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import moment from 'moment';
 import { Brain, ChevronRight, ExternalLink } from 'lucide-react';
 import api from '../api';
+import CreateEntityModal from '../components/CreateEntityModal';
 import ForgettingCurveChart from '../components/ForgettingCurveChart';
 import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { subjectIdOf, topicIdFromSession } from '../utils/topic';
 
 export default function MemoryHub() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [topics, setTopics] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [selectedTopicId, setSelectedTopicId] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [sessionPrefill, setSessionPrefill] = useState(null);
 
   const load = async () => {
     try {
@@ -32,6 +36,12 @@ export default function MemoryHub() {
 
   useEffect(() => {
     load();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   useEffect(() => {
@@ -82,6 +92,17 @@ export default function MemoryHub() {
 
   return (
     <div className="w-full max-w-6xl mx-auto p-6 md:p-10">
+      {sessionPrefill && (
+        <CreateEntityModal
+          type="session"
+          sessionPrefill={sessionPrefill}
+          onClose={() => setSessionPrefill(null)}
+          onSuccess={load}
+          userObjectId={user.id}
+          subjects={subjects}
+          topics={topics}
+        />
+      )}
       <header className="mb-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div className="flex items-start gap-4">
           <div className="p-3 rounded-2xl bg-sunset-yellow/20 text-sunset-orange border border-border-color">
@@ -183,7 +204,20 @@ export default function MemoryHub() {
 
         <section className="space-y-6">
           {selectedTopic && (
-            <ForgettingCurveChart topic={selectedTopic} sessions={sessions} selectedSessionId={selectedSessionId} />
+            <ForgettingCurveChart
+              topic={selectedTopic}
+              sessions={sessions}
+              selectedSessionId={selectedSessionId}
+              onScheduleReview={({ dateMs }) => {
+                setSessionPrefill({
+                  subjectObjectId: subjectIdOf(selectedTopic),
+                  topicObjectId: selectedTopic._id,
+                  date: moment(dateMs).format('YYYY-MM-DD'),
+                  startTime: '09:00',
+                  endTime: '10:00',
+                });
+              }}
+            />
           )}
 
           {!selectedTopic && topics.length === 0 && (

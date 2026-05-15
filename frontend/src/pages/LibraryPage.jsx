@@ -22,8 +22,6 @@ export default function LibraryPage() {
     load().catch(console.error);
   }, []);
 
-  const subjectName = (id) => subjects.find((s) => s._id === id)?.name || '—';
-
   const delSubject = async (id) => {
     if (!window.confirm('Delete this subject? Topics may still reference it in the database.')) return;
     try {
@@ -212,51 +210,109 @@ export default function LibraryPage() {
 
       <section>
         <div className="flex items-center justify-between gap-4 mb-4">
-          <h2 className="text-3xl font-serif font-bold">Topics</h2>
+          <h2 className="text-3xl font-serif font-bold">Topics by subject</h2>
           <button type="button" onClick={() => setModalType('topic')} className="fun-button-secondary text-xs py-2 flex items-center gap-1">
             <Plus size={14} /> Add topic
           </button>
         </div>
-        <div className="fun-card overflow-x-auto">
-          <table className="w-full text-base min-w-[560px]">
-            <thead className="font-mono text-xs uppercase text-text-muted border-b border-border-color">
-              <tr>
-                <th className="text-left p-3">Topic</th>
-                <th className="text-left p-3">Subject</th>
-                <th className="text-left p-3">Status</th>
-                <th className="text-right p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topics.map((t) => (
-                <tr key={t._id} className="border-b border-border-color last:border-0">
-                  <td className="p-3 font-serif font-bold">{t.name}</td>
-                  <td className="p-3 font-mono text-xs">{subjectName(subjectIdOf(t))}</td>
-                  <td className="p-3 font-mono text-xs">{t.status}</td>
-                  <td className="p-3 text-right space-x-1">
-                    <button
-                      type="button"
-                      className="p-2 text-text-muted hover:text-sunset-orange"
-                      onClick={() => setEditingTopic({ _id: t._id, name: t.name, status: t.status })}
-                      title="Edit"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button type="button" className="p-2 text-sunset-pink opacity-80 hover:opacity-100" onClick={() => delTopic(t._id)} title="Delete">
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {topics.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-text-muted font-serif">
-                    No topics yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="space-y-6">
+          {subjects.length === 0 && (
+            <div className="fun-card p-8 text-center text-text-muted font-serif">Add a subject first, then attach topics to it.</div>
+          )}
+          {subjects.map((sub) => {
+            const forSubject = topics.filter((t) => subjectIdOf(t) === sub._id);
+            return (
+              <div key={sub._id} className="fun-card overflow-x-auto">
+                <div className="px-4 py-3 border-b border-border-color flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-serif font-bold text-lg text-text-main">{sub.name}</h3>
+                  <span className="font-mono text-xs uppercase text-text-muted">
+                    {forSubject.length === 0 ? 'No topics yet' : `${forSubject.length} topic${forSubject.length === 1 ? '' : 's'}`}
+                  </span>
+                </div>
+                {forSubject.length === 0 ? (
+                  <p className="p-8 text-center text-text-muted font-serif leading-relaxed">
+                    No topics under this subject yet. Add a topic and choose “{sub.name}” as the subject.
+                  </p>
+                ) : (
+                  <table className="w-full text-base min-w-[560px]">
+                    <thead className="font-mono text-xs uppercase text-text-muted border-b border-border-color">
+                      <tr>
+                        <th className="text-left p-3">Topic</th>
+                        <th className="text-left p-3">Status</th>
+                        <th className="text-right p-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {forSubject.map((t) => (
+                        <tr key={t._id} className="border-b border-border-color last:border-0">
+                          <td className="p-3 font-serif font-bold">{t.name}</td>
+                          <td className="p-3 font-mono text-xs">{t.status}</td>
+                          <td className="p-3 text-right space-x-1">
+                            <button
+                              type="button"
+                              className="p-2 text-text-muted hover:text-sunset-orange"
+                              onClick={() => setEditingTopic({ _id: t._id, name: t.name, status: t.status })}
+                              title="Edit"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button type="button" className="p-2 text-sunset-pink opacity-80 hover:opacity-100" onClick={() => delTopic(t._id)} title="Delete">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
+          {subjects.length > 0 &&
+            topics.some((t) => {
+              const sid = subjectIdOf(t);
+              return sid && !subjects.some((s) => s._id === sid);
+            }) && (
+              <div className="fun-card p-6 border border-sunset-yellow/40">
+                <p className="font-mono text-xs uppercase text-text-muted mb-2">Orphan topics</p>
+                <p className="text-sm text-text-muted mb-4">These topics reference a subject that is no longer in your list.</p>
+                <table className="w-full text-base min-w-[520px]">
+                  <thead className="font-mono text-xs uppercase text-text-muted border-b border-border-color">
+                    <tr>
+                      <th className="text-left p-3">Topic</th>
+                      <th className="text-left p-3">Status</th>
+                      <th className="text-right p-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topics
+                      .filter((t) => {
+                        const sid = subjectIdOf(t);
+                        return sid && !subjects.some((s) => s._id === sid);
+                      })
+                      .map((t) => (
+                        <tr key={t._id} className="border-b border-border-color last:border-0">
+                          <td className="p-3 font-serif font-bold">{t.name}</td>
+                          <td className="p-3 font-mono text-xs">{t.status}</td>
+                          <td className="p-3 text-right space-x-1">
+                            <button
+                              type="button"
+                              className="p-2 text-text-muted hover:text-sunset-orange"
+                              onClick={() => setEditingTopic({ _id: t._id, name: t.name, status: t.status })}
+                              title="Edit"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button type="button" className="p-2 text-sunset-pink opacity-80 hover:opacity-100" onClick={() => delTopic(t._id)} title="Delete">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
         </div>
       </section>
     </div>
