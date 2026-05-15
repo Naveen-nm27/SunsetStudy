@@ -18,6 +18,7 @@ const subjectSchema = new Schema(
       index: true,
     },
     description: { type: String, default: "", trim: true },
+    color: { type: String, default: "", trim: true },
     status: {
       type: String,
       enum: ["active", "archived"],

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw } from 'lucide-react';
+import { useConfirm } from './ConfirmProvider';
 
 function parseTimeToSeconds(hhmm) {
   if (!hhmm || typeof hhmm !== 'string') return 0;
@@ -19,6 +20,7 @@ function formatCountdown(sec) {
 
 /** Study timer for a planned session: duration from start–end window, or 25m default. */
 export default function SessionStudyTimer({ session, onComplete }) {
+  const confirm = useConfirm();
   const totalSec = useMemo(() => {
     const start = parseTimeToSeconds(session.startTime);
     const end = parseTimeToSeconds(session.endTime);
@@ -78,8 +80,9 @@ export default function SessionStudyTimer({ session, onComplete }) {
     setPhase('paused');
   };
 
-  const onReset = () => {
-    if (!window.confirm('Reset the timer to the full session length? Your current progress will be lost.')) return;
+  const onReset = async () => {
+    const ok = await confirm('Reset the timer to the full session length? Your current progress will be lost.');
+    if (!ok) return;
     clearTick();
     finishedRef.current = false;
     setRemaining(totalSec);

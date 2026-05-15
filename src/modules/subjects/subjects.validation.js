@@ -8,6 +8,7 @@ export const createSubjectSchema = z.object({
   name: z.string().min(3, "name must be at least 3 characters").trim(),
   type: SubjectTypeEnum,
   description: z.string().trim().optional(),
+  color: z.string().trim().optional(),
   status: SubjectStatusEnum.optional(),
 });
 

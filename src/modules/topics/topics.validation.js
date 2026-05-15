@@ -6,6 +6,7 @@ export const createTopicSchema = z.object({
   subjectObjectId: z.string().min(1, "subjectObjectId is required").trim(),
   userObjectId: z.string().min(1, "userObjectId is required").trim(),
   name: z.string().min(1, "name is required").trim(),
+  color: z.string().optional(),
   status: TopicStatusEnum.optional(),
 });
 

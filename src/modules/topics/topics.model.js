@@ -17,6 +17,7 @@ const topicSchema = new Schema(
       index: true,
     },
     name: { type: String, required: true, trim: true },
+    color: { type: String, default: "", trim: true },
     status: {
       type: String,
       enum: ["not started", "in progress", "done"],

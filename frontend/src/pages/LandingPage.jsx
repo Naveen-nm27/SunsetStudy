@@ -11,7 +11,7 @@ export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="landing-root min-h-screen relative w-full flex flex-col overflow-x-hidden bg-bg-base text-text-main">
+    <div className="landing-root dark min-h-screen relative w-full flex flex-col overflow-x-hidden bg-bg-base text-text-main">
       <div className="landing-night-sky" aria-hidden />
       <div className="sunset-atmosphere" aria-hidden />
       <div className="lofi-grain" aria-hidden />
@@ -25,17 +25,10 @@ export default function LandingPage() {
 
       <header className="relative z-20 pt-6 md:pt-10 px-5 md:px-12 flex flex-wrap justify-between items-center gap-4 max-w-6xl w-full mx-auto">
         <Link to="/" className="group flex items-center gap-3 shrink-0">
-          <BrandWordmark variant={theme === 'dark' ? 'gradient' : 'default'} className="group-hover:opacity-90 transition-opacity" />
+          <BrandWordmark className="group-hover:opacity-90 transition-opacity" />
         </Link>
         <div className="flex items-center gap-2 md:gap-3 font-sans text-base">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2.5 rounded-xl border-2 border-border-color bg-bg-elevated/90 text-sunset-orange dark:border-white/20 dark:bg-black/25 dark:text-[#f8b51b] hover:border-sunset-orange/50 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-          </button>
+
           <Link
             to="/login"
             className="px-4 py-2.5 rounded-xl font-medium tracking-tight border-2 border-border-color bg-bg-elevated/90 text-text-main hover:bg-bg-card transition-colors dark:border-white/15 dark:bg-transparent dark:text-white/95 dark:hover:bg-white/10"

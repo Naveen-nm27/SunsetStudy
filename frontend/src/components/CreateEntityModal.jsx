@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import api from '../api';
 import moment from 'moment';
 import { subjectIdOf } from '../utils/topic';
+import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
 
 export default function CreateEntityModal({ type, onClose, onSuccess, userObjectId, subjects, topics, sessionPrefill }) {
   const [formData, setFormData] = useState({});
@@ -12,9 +13,9 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
   // Initialize form data based on type
   useEffect(() => {
     if (type === 'subject') {
-      setFormData({ name: '', type: 'academic', userObjectId });
+      setFormData({ name: '', type: 'academic', color: DEFAULT_SUBJECT_COLOR, userObjectId });
     } else if (type === 'topic') {
-      setFormData({ name: '', subjectObjectId: subjects[0]?._id || '', userObjectId });
+      setFormData({ name: '', subjectObjectId: subjects[0]?._id || '', color: '', userObjectId });
     } else if (type === 'session') {
       const pf = sessionPrefill || {};
       const defaultSubject = pf.subjectObjectId || subjects[0]?._id || '';
@@ -110,6 +111,26 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
                   <option value="project">Project</option>
                 </select>
               </div>
+              <div>
+                <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Subject colour</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {SUBJECT_COLOR_PALETTE.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      title={c}
+                      onClick={() => setFormData({ ...formData, color: c })}
+                      style={{ backgroundColor: c }}
+                      className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                        formData.color === c
+                          ? 'border-white shadow-[0_0_0_2px_rgba(0,0,0,0.35)] scale-110'
+                          : 'border-transparent opacity-75'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-1.5 font-mono text-xs text-text-muted">Selected: <span style={{ color: formData.color || DEFAULT_SUBJECT_COLOR }}>■</span> {formData.color || DEFAULT_SUBJECT_COLOR}</p>
+              </div>
             </>
           )}
 
@@ -125,6 +146,26 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
                 <select required className="w-full rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 focus:border-sunset-orange outline-none font-sans text-text-main tracking-tight" value={formData.subjectObjectId || ''} onChange={e => setFormData({...formData, subjectObjectId: e.target.value})}>
                   {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Topic colour (optional)</label>
+                <p className="font-sans text-xs text-text-muted mb-2">Leave unselected to inherit subject colour.</p>
+                <div className="flex flex-wrap gap-2">
+                  {SUBJECT_COLOR_PALETTE.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      title={c}
+                      onClick={() => setFormData({ ...formData, color: formData.color === c ? '' : c })}
+                      style={{ backgroundColor: c }}
+                      className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                        formData.color === c
+                          ? 'border-white shadow-[0_0_0_2px_rgba(0,0,0,0.35)] scale-110'
+                          : 'border-transparent opacity-75'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </>
           )}

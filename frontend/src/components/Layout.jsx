@@ -27,7 +27,7 @@ export default function Layout({ children }) {
 
       <header className="px-4 md:px-8 py-4 md:py-5 border-b-2 border-border-color bg-bg-card/85 dark:bg-bg-card/75 backdrop-blur-md flex flex-col gap-4 md:flex-row md:items-center md:justify-between sticky top-0 z-40 shadow-sm">
         <Link to="/" className="flex items-center gap-3 shrink-0 group" title="SunsetStudy home">
-          <BrandWordmark className="group-hover:opacity-90 transition-opacity" />
+          <BrandWordmark className="text-2xl md:text-3xl group-hover:opacity-90 transition-opacity" />
         </Link>
 
         <nav className="flex flex-wrap gap-1.5 md:gap-2 overflow-x-auto pb-1 md:pb-0 -mx-1 px-1">

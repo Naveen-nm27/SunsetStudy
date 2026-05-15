@@ -1,4 +1,4 @@
-/* ── Local fonts ────────────────────────────────────────── */
+﻿/* ── Local fonts ────────────────────────────────────────── */
 @font-face {
   font-family: "BungeeShade";
   src: url("/fonts/BungeeShade-Regular.ttf") format("truetype");
@@ -126,11 +126,11 @@ body {
     radial-gradient(ellipse 120% 70% at 50% -15%, color-mix(in srgb, var(--sun-ember) 18%, transparent), transparent 58%),
     radial-gradient(ellipse 55% 45% at 95% 25%, color-mix(in srgb, var(--sun-plum) 14%, transparent), transparent 52%),
     radial-gradient(ellipse 65% 50% at 5% 85%, color-mix(in srgb, var(--sun-gold) 12%, transparent), transparent 55%);
-  opacity: 0.5;
+  opacity: 0.18;
 }
 
 html.dark .sunset-atmosphere {
-  opacity: 0.38;
+  opacity: 0.32;
 }
 
 .app-shell-main {
@@ -175,6 +175,12 @@ html.dark .sunset-atmosphere {
 }
 .fun-card:hover {
   @apply shadow-md border-sunset-orange/50;
+}
+
+/* Subject-colour stripe: override just the left border with a subject colour.
+   Use as an inline style: borderLeftColor + borderLeftWidth on .fun-card elements. */
+.fun-card[style*="borderLeftColor"] {
+  border-left-width: 4px;
 }
 
 .fun-button {
@@ -241,27 +247,41 @@ html.dark .landing-root::after {
   background: radial-gradient(ellipse 85% 65% at 50% 0%, transparent 40%, color-mix(in srgb, var(--sun-void) 0.4, transparent));
 }
 
-/* Full-bleed sunset strip — dark / “night study” landing only */
+/* Full-bleed sky - light: sunny day, dark: evening sunset */
 .landing-night-sky {
   position: fixed;
   inset: 0;
   z-index: -10;
-  opacity: 0.92;
+  opacity: 0.88;
+  /* Light mode: sunny day - sky blue to golden sun */
   background: linear-gradient(
-    165deg,
-    #2f1a72 0%,
-    #4f1d6e 18%,
-    #7e235d 38%,
-    #a52a4e 52%,
-    #e53e2c 68%,
-    #ef5a1b 82%,
-    #f57f20 92%,
-    #f8b51b 100%
+    175deg,
+    #5bb8f5 0%,
+    #82d0f7 14%,
+    #b8e9ff 28%,
+    #e8f7ff 42%,
+    #fff8e7 58%,
+    #ffe8a0 72%,
+    #ffcf4b 86%,
+    #f9b81a 100%
   );
 }
 
-html:not(.dark) .landing-night-sky {
-  display: none;
+/* Dark mode: evening sunset - deep indigo sky to amber horizon */
+html.dark .landing-night-sky {
+  opacity: 0.94;
+  background: linear-gradient(
+    165deg,
+    #0d1540 0%,
+    #1a1a6e 14%,
+    #3d1278 26%,
+    #6b1080 38%,
+    #a0185c 50%,
+    #cc2e2e 62%,
+    #e85b0e 74%,
+    #f59220 86%,
+    #fdd247 100%
+  );
 }
 
 /* Space Mono terminal display — techy-retro; larger clamp for legibility */

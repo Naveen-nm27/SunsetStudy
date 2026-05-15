@@ -4,6 +4,7 @@ import { Clock, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
+import { getSubjectColor } from '../utils/subjectColors';
 
 export default function TimelinePage() {
   const [events, setEvents] = useState([]);
@@ -48,6 +49,7 @@ export default function TimelinePage() {
           endTime: s.endTime,
           type: 'session',
           status: s.status,
+          subjectId: s.topicObjectId?.subjectObjectId?._id || s.topicObjectId?.subjectObjectId || null,
           resource: s,
         }));
 
@@ -148,8 +150,19 @@ export default function TimelinePage() {
                 let cardColor = 'fun-card';
                 let dotColor = 'bg-sunset-yellow';
 
+                // Resolve subject colour for session events
+                const sessionSubjectId = !isBlock
+                  ? (ev.resource?.topicObjectId?.subjectObjectId?._id ||
+                     ev.resource?.topicObjectId?.subjectObjectId ||
+                     null)
+                  : null;
+                const sessionSubjectColor = !isBlock
+                  ? getSubjectColor(sessionSubjectId, subjects)
+                  : null;
+
                 if (isBlock) {
-                  dotColor = 'bg-sunset-pink';
+                  dotColor = 'bg-text-muted/60';
+                  cardColor = 'fun-card bg-bg-base border-border-color/50 border-dashed opacity-85 text-text-muted';
                 } else if (isCompleted) {
                   cardColor = 'fun-card opacity-50 bg-bg-base';
                   dotColor = 'bg-text-muted';
@@ -167,13 +180,19 @@ export default function TimelinePage() {
                   >
                     <div className={`absolute left-[22px] top-6 w-4 h-4 rounded-full border-2 border-bg-base ${dotColor} z-10`} />
 
-                    <div className={`${cardColor} p-6 flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+                    <div
+                      className={`${cardColor} p-6 flex flex-col md:flex-row md:items-center justify-between gap-4`}
+                      style={!isBlock && sessionSubjectColor ? {
+                        borderLeftColor: sessionSubjectColor,
+                        borderLeftWidth: '4px',
+                      } : undefined}
+                    >
                       <div className="flex-1">
                         <p className="font-mono text-sm font-bold opacity-80 mb-2 flex items-center gap-2">
                           <Clock size={14} /> {moment(ev.startTime, 'HH:mm').format('h:mm A')} —{' '}
                           {moment(ev.endTime, 'HH:mm').format('h:mm A')}
                         </p>
-                        <h3 className={`text-xl font-serif font-bold ${isCompleted ? 'line-through opacity-70' : ''}`}>
+                        <h3 className={`text-xl font-serif font-bold ${isCompleted ? 'line-through opacity-70' : ''} ${isBlock ? 'text-text-muted opacity-90' : 'text-text-main'}`}>
                           {ev.title}
                         </h3>
                         {isBlock && (

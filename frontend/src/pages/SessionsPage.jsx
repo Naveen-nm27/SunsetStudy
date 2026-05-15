@@ -5,10 +5,15 @@ import { Plus, Trash2, Brain } from 'lucide-react';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
 import SessionStudyTimer from '../components/SessionStudyTimer';
-import { topicIdFromSession } from '../utils/topic';
+import { topicIdFromSession, subjectIdOf } from '../utils/topic';
+import { getSubjectColor } from '../utils/subjectColors';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 export default function SessionsPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const toast = useToast();
+  const confirm = useConfirm();
   const [sessions, setSessions] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -36,13 +41,14 @@ export default function SessionsPage() {
   }, [sessions, filterTopicId]);
 
   const remove = async (id) => {
-    if (!window.confirm('Delete this session?')) return;
+    const ok = await confirm('Delete this session?');
+    if (!ok) return;
     try {
       await api.delete(`/sessions/${id}`);
       await load();
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || 'Delete failed');
+      toast(e.response?.data?.message || 'Delete failed', 'error');
     }
   };
 
@@ -50,9 +56,10 @@ export default function SessionsPage() {
     try {
       await api.patch(`/sessions/${id}`, { status });
       await load();
+      toast('Session marked as completed', 'success');
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || 'Update failed');
+      toast(e.response?.data?.message || 'Update failed', 'error');
     }
   };
 
@@ -112,13 +119,23 @@ export default function SessionsPage() {
             {filtered.map((s) => {
               const tid = topicIdFromSession(s);
               const tname = s.topicObjectId?.name || topics.find((t) => t._id === tid)?.name || 'Topic';
+              const subjectId = s.topicObjectId?.subjectObjectId?._id || s.topicObjectId?.subjectObjectId || null;
+              const subColor = getSubjectColor(subjectId, subjects);
               return (
                 <tr key={s._id} className="border-b border-border-color last:border-0 hover:bg-bg-card/50">
                   <td className="p-3 font-mono text-xs whitespace-nowrap align-top">
                     <div>{moment(s.date).format('MMM D, YYYY')}</div>
                     <SessionStudyTimer key={s._id} session={s} onComplete={() => mark(s._id, 'completed')} />
                   </td>
-                  <td className="p-3 font-serif">{tname}</td>
+                  <td className="p-3 font-serif">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: subColor }}
+                      />
+                      {tname}
+                    </span>
+                  </td>
                   <td className="p-3 font-mono text-xs whitespace-nowrap">
                     {s.startTime} – {s.endTime}
                   </td>

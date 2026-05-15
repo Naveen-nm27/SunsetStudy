@@ -3,9 +3,14 @@ import { Plus, Trash2, Pencil } from 'lucide-react';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
 import { subjectIdOf } from '../utils/topic';
+import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 export default function LibraryPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const toast = useToast();
+  const confirm = useConfirm();
   const [subjects, setSubjects] = useState([]);
   const [topics, setTopics] = useState([]);
   const [modalType, setModalType] = useState(null);
@@ -23,22 +28,24 @@ export default function LibraryPage() {
   }, []);
 
   const delSubject = async (id) => {
-    if (!window.confirm('Delete this subject? Topics may still reference it in the database.')) return;
+    const ok = await confirm('Delete this subject? Topics may still reference it in the database.');
+    if (!ok) return;
     try {
       await api.delete(`/subjects/${id}`);
       await load();
     } catch (e) {
-      alert(e.response?.data?.message || 'Could not delete subject');
+      toast(e.response?.data?.message || 'Could not delete subject', 'error');
     }
   };
 
   const delTopic = async (id) => {
-    if (!window.confirm('Delete this topic and unlink future sessions manually if needed?')) return;
+    const ok = await confirm('Delete this topic and unlink future sessions manually if needed?');
+    if (!ok) return;
     try {
       await api.delete(`/topics/${id}`);
       await load();
     } catch (e) {
-      alert(e.response?.data?.message || 'Could not delete topic');
+      toast(e.response?.data?.message || 'Could not delete topic', 'error');
     }
   };
 
@@ -49,11 +56,13 @@ export default function LibraryPage() {
       await api.patch(`/subjects/${editingSubject._id}`, {
         name: editingSubject.name,
         type: editingSubject.type,
+        color: editingSubject.color || DEFAULT_SUBJECT_COLOR,
       });
       setEditingSubject(null);
       await load();
+      toast('Subject updated', 'success');
     } catch (err) {
-      alert(err.response?.data?.message || 'Update failed');
+      toast(err.response?.data?.message || 'Update failed', 'error');
     }
   };
 
@@ -67,8 +76,9 @@ export default function LibraryPage() {
       });
       setEditingTopic(null);
       await load();
+      toast('Topic updated', 'success');
     } catch (err) {
-      alert(err.response?.data?.message || 'Update failed');
+      toast(err.response?.data?.message || 'Update failed', 'error');
     }
   };
 
@@ -110,6 +120,30 @@ export default function LibraryPage() {
                 <option value="hobby">Hobby</option>
                 <option value="project">Project</option>
               </select>
+            </div>
+            <div>
+              <label className="block font-mono text-xs uppercase text-text-muted mb-1">Subject colour</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {SUBJECT_COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    title={c}
+                    onClick={() => setEditingSubject({ ...editingSubject, color: c })}
+                    style={{ backgroundColor: c }}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                      (editingSubject.color || DEFAULT_SUBJECT_COLOR) === c
+                        ? 'border-white shadow-[0_0_0_2px_rgba(0,0,0,0.35)] scale-110'
+                        : 'border-transparent opacity-75'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="mt-1.5 font-mono text-xs text-text-muted">
+                Selected:{' '}
+                <span style={{ color: editingSubject.color || DEFAULT_SUBJECT_COLOR }}>■</span>{' '}
+                {editingSubject.color || DEFAULT_SUBJECT_COLOR}
+              </p>
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <button type="button" className="fun-button-secondary text-xs py-2" onClick={() => setEditingSubject(null)}>
@@ -179,13 +213,21 @@ export default function LibraryPage() {
             <tbody>
               {subjects.map((s) => (
                 <tr key={s._id} className="border-b border-border-color last:border-0">
-                  <td className="p-3 font-serif font-bold">{s.name}</td>
+                  <td className="p-3 font-serif font-bold">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: s.color || DEFAULT_SUBJECT_COLOR }}
+                      />
+                      {s.name}
+                    </span>
+                  </td>
                   <td className="p-3 font-mono text-xs uppercase">{s.type}</td>
                   <td className="p-3 text-right space-x-1">
                     <button
                       type="button"
                       className="p-2 text-text-muted hover:text-sunset-orange"
-                      onClick={() => setEditingSubject({ _id: s._id, name: s.name, type: s.type })}
+                      onClick={() => setEditingSubject({ _id: s._id, name: s.name, type: s.type, color: s.color || DEFAULT_SUBJECT_COLOR })}
                       title="Edit"
                     >
                       <Pencil size={16} />
@@ -221,10 +263,24 @@ export default function LibraryPage() {
           )}
           {subjects.map((sub) => {
             const forSubject = topics.filter((t) => subjectIdOf(t) === sub._id);
+            const subColor = sub.color || DEFAULT_SUBJECT_COLOR;
             return (
-              <div key={sub._id} className="fun-card overflow-x-auto">
+              <div
+                key={sub._id}
+                className="fun-card overflow-x-auto"
+                style={{
+                  borderLeftColor: subColor,
+                  borderLeftWidth: '4px',
+                }}
+              >
                 <div className="px-4 py-3 border-b border-border-color flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-serif font-bold text-lg text-text-main">{sub.name}</h3>
+                  <h3 className="font-serif font-bold text-lg text-text-main flex items-center gap-2">
+                    <span
+                      className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: subColor }}
+                    />
+                    {sub.name}
+                  </h3>
                   <span className="font-mono text-xs uppercase text-text-muted">
                     {forSubject.length === 0 ? 'No topics yet' : `${forSubject.length} topic${forSubject.length === 1 ? '' : 's'}`}
                   </span>
