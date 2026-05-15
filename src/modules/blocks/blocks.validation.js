@@ -20,29 +20,29 @@ const daysSchema = z
     message: "days must contain only valid weekday strings",
   });
 
-export const createBlockSchema = z
-  .object({
-    userObjectId: z.string().min(1, "userObjectId is required").trim(),
-    title: z.string().min(1, "title is required").trim(),
-    type: BlockTypeEnum,
-    date: z.coerce.date({ message: "date must be a valid date" }),
-    startTime: z.string().trim().regex(HHMM, 'startTime must be in "HH:MM" format'),
-    endTime: z.string().trim().regex(HHMM, 'endTime must be in "HH:MM" format'),
-    recurring: z.boolean().optional().default(false),
-    days: daysSchema,
-    note: z.string().trim().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.recurring && data.days.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["days"],
-        message: "days required when recurring is true",
-      });
-    }
-  });
+const baseBlockSchema = z.object({
+  userObjectId: z.string().min(1, "userObjectId is required").trim(),
+  title: z.string().min(1, "title is required").trim(),
+  type: BlockTypeEnum,
+  date: z.coerce.date({ message: "date must be a valid date" }),
+  startTime: z.string().trim().regex(HHMM, 'startTime must be in "HH:MM" format'),
+  endTime: z.string().trim().regex(HHMM, 'endTime must be in "HH:MM" format'),
+  recurring: z.boolean().optional().default(false),
+  days: daysSchema,
+  note: z.string().trim().optional(),
+});
 
-export const updateBlockSchema = createBlockSchema.partial().refine(
+export const createBlockSchema = baseBlockSchema.superRefine((data, ctx) => {
+  if (data.recurring && data.days.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["days"],
+      message: "days required when recurring is true",
+    });
+  }
+});
+
+export const updateBlockSchema = baseBlockSchema.partial().refine(
   (data) => Object.keys(data).length > 0,
   { message: "at least one field is required" }
 );

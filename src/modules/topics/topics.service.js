@@ -1,7 +1,7 @@
 import { Topic } from "./topics.model.js";
 
 /** Days until next review after each completed session (stage indexes into this array). */
-export const REVIEW_INTERVAL_DAYS = [1, 3, 7, 14, 30];
+export const REVIEW_INTERVAL_DAYS = [1, 3, 7, 14, 30, 60];
 
 function addCalendarDays(from, days) {
   const d = new Date(from);

@@ -6,7 +6,19 @@ export const createSessionService = async (data) => {
   await session.save();
 
   if (session.status === "completed" && session.topicObjectId) {
-    await advanceTopicReviewSchedule(session.topicObjectId);
+    const updatedTopic = await advanceTopicReviewSchedule(session.topicObjectId);
+    if (updatedTopic && updatedTopic.nextReviewDate) {
+      const nextSession = new Session({
+        userObjectId: session.userObjectId,
+        subjectObjectId: session.subjectObjectId,
+        topicObjectId: session.topicObjectId,
+        date: updatedTopic.nextReviewDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        status: "planned",
+      });
+      await nextSession.save();
+    }
   }
 
   return session;
@@ -39,7 +51,19 @@ export const updateSessionByIdService = async (id, data) => {
   await session.save();
 
   if (becomingCompleted && session.topicObjectId) {
-    await advanceTopicReviewSchedule(session.topicObjectId);
+    const updatedTopic = await advanceTopicReviewSchedule(session.topicObjectId);
+    if (updatedTopic && updatedTopic.nextReviewDate) {
+      const nextSession = new Session({
+        userObjectId: session.userObjectId,
+        subjectObjectId: session.subjectObjectId,
+        topicObjectId: session.topicObjectId,
+        date: updatedTopic.nextReviewDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        status: "planned",
+      });
+      await nextSession.save();
+    }
   }
 
   return await Session.findById(session._id)
