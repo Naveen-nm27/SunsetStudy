@@ -7,17 +7,17 @@
 
 <br />
 
-## 🚨 Problem Description
+## Problem Description
 
 Traditional study methods often lead to the **"Illusion of Competence"**—students read material once, feel they know it, but experience rapid forgetting soon after. Without a systematic approach to reviewing materials, students struggle to manage their time effectively, lose track of what needs to be reviewed, and inevitably resort to stressful, low-retention cramming before exams.
 
-## 💡 Proposed Solution
+## Proposed Solution
 
 **SunsetStudy** introduces a systematic, automated study planner built on the proven **Ebbinghaus Forgetting Curve**. Instead of relying on manual scheduling, the app intelligently calculates your next review dates using **Spaced Repetition**. By organizing learning into Subjects, Topics, Study Blocks, and Study Sessions, SunsetStudy ensures that you review information exactly when you're about to forget it—optimizing long-term memory retention.
 
 ---
 
-## 🎯 Features
+## Features
 
 - **Spaced Repetition Algorithm:** Automatically calculates and prompts topics that are "Due Today" based on your previous study sessions.
 - **Subject & Topic Hierarchy:** Categorize learning into Academics, Hobbies, or Projects.
@@ -28,9 +28,9 @@ Traditional study methods often lead to the **"Illusion of Competence"**—stude
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
-### Frontend 🎨
+### Frontend
 - **React 19** with **Vite** (Blazing fast development)
 - **TailwindCSS v4** (Modern utility-first styling)
 - **Framer Motion** (Fluid micro-interactions and animations)
@@ -38,7 +38,7 @@ Traditional study methods often lead to the **"Illusion of Competence"**—stude
 - **React Big Calendar** (Dynamic schedule visualization)
 - **Axios** (API communication)
 
-### Backend ⚙️
+### Backend 
 - **Node.js & Express.js** (Robust REST API architecture)
 - **MongoDB & Mongoose** (NoSQL Database for flexible document models)
 - **JSON Web Tokens (JWT)** (Stateless, secure authentication)
@@ -47,7 +47,7 @@ Traditional study methods often lead to the **"Illusion of Competence"**—stude
 
 ---
 
-## 📂 File & Folder Structure
+## File & Folder Structure
 
 ```mermaid
 graph TD
@@ -89,7 +89,7 @@ graph TD
 
 ---
 
-## 🏗️ Architecture Diagrams
+## Architecture Diagrams
 
 ### Entity-Relationship Diagram (Database)
 
@@ -161,7 +161,7 @@ sequenceDiagram
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Users
 - `POST /users/register` - Register a new account.
@@ -188,7 +188,7 @@ sequenceDiagram
   ```
 
 ### Topics
-- `GET /topics/due-today` - 🧠 **Core Feature:** Fetches all topics scheduled for review today based on the spaced repetition algorithm.
+- `GET /topics/due-today` - **Core Feature:** Fetches all topics scheduled for review today based on the spaced repetition algorithm.
 - `POST /topics` - Add a new topic under a subject.
 
 ### Study Sessions & Blocks
@@ -197,7 +197,7 @@ sequenceDiagram
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 Follow these steps to set up the project locally on your machine:
 
@@ -233,7 +233,7 @@ Follow these steps to set up the project locally on your machine:
 
 ---
 
-## 🚀 How to Run the Project
+## How to Run the Project
 
 You will need two terminal windows to run both the client and the server simultaneously.
 
