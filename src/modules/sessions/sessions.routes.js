@@ -7,10 +7,11 @@ import {
   updateSession,
 } from "./sessions.controller.js";
 import { createSessionSchema, updateSessionSchema, validate } from "./sessions.validation.js";
+import { injectAuthUserId } from "../../utils/authUser.js";
 
 const router = express.Router();
 
-router.post("/", validate(createSessionSchema), createSession);
+router.post("/", injectAuthUserId, validate(createSessionSchema), createSession);
 router.get("/", getSessions);
 router.get("/:id", getSessionById);
 router.patch("/:id", validate(updateSessionSchema), updateSession);

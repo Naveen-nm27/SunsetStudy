@@ -5,6 +5,7 @@ import CreateEntityModal from '../components/CreateEntityModal';
 import { subjectIdOf } from '../utils/topic';
 import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
 import { useToast } from '../components/ToastProvider';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import { useConfirm } from '../components/ConfirmProvider';
 
 export default function LibraryPage() {
@@ -34,7 +35,7 @@ export default function LibraryPage() {
       await api.delete(`/subjects/${id}`);
       await load();
     } catch (e) {
-      toast(e.response?.data?.message || 'Could not delete subject', 'error');
+      toast(getFriendlyErrorMessage(e, "We couldn't delete that subject."), 'error');
     }
   };
 
@@ -45,7 +46,7 @@ export default function LibraryPage() {
       await api.delete(`/topics/${id}`);
       await load();
     } catch (e) {
-      toast(e.response?.data?.message || 'Could not delete topic', 'error');
+      toast(getFriendlyErrorMessage(e, "We couldn't delete that topic."), 'error');
     }
   };
 
@@ -62,7 +63,7 @@ export default function LibraryPage() {
       await load();
       toast('Subject updated', 'success');
     } catch (err) {
-      toast(err.response?.data?.message || 'Update failed', 'error');
+      toast(getFriendlyErrorMessage(err, "We couldn't update that subject."), 'error');
     }
   };
 
@@ -78,7 +79,7 @@ export default function LibraryPage() {
       await load();
       toast('Topic updated', 'success');
     } catch (err) {
-      toast(err.response?.data?.message || 'Update failed', 'error');
+      toast(getFriendlyErrorMessage(err, "We couldn't update that topic."), 'error');
     }
   };
 

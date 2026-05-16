@@ -5,6 +5,7 @@ import { Brain, ChevronRight, ExternalLink, CalendarDays, Pencil, Check, X } fro
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
 import ForgettingCurveChart from '../components/ForgettingCurveChart';
+import ReviewScheduleList from '../components/ReviewScheduleList';
 import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { subjectIdOf, topicIdFromSession } from '../utils/topic';
 import { getSubjectColor } from '../utils/subjectColors';
@@ -107,6 +108,17 @@ export default function MemoryHub() {
   const stage = selectedTopic?.reviewStage ?? 0;
   const nextInterval =
     stage < REVIEW_INTERVAL_DAYS.length ? REVIEW_INTERVAL_DAYS[stage] : REVIEW_INTERVAL_DAYS[REVIEW_INTERVAL_DAYS.length - 1];
+
+  const scheduleReviewFromDate = ({ dateMs }) => {
+    if (!selectedTopic) return;
+    setSessionPrefill({
+      subjectObjectId: subjectIdOf(selectedTopic),
+      topicObjectId: selectedTopic._id,
+      date: moment(dateMs).format('YYYY-MM-DD'),
+      startTime: '09:00',
+      endTime: '10:00',
+    });
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto p-6 md:p-10">
@@ -325,20 +337,19 @@ export default function MemoryHub() {
 
         <section className="space-y-6">
           {selectedTopic && (
-            <ForgettingCurveChart
-              topic={selectedTopic}
-              sessions={sessions}
-              selectedSessionId={selectedSessionId}
-              onScheduleReview={({ dateMs }) => {
-                setSessionPrefill({
-                  subjectObjectId: subjectIdOf(selectedTopic),
-                  topicObjectId: selectedTopic._id,
-                  date: moment(dateMs).format('YYYY-MM-DD'),
-                  startTime: '09:00',
-                  endTime: '10:00',
-                });
-              }}
-            />
+            <>
+              <ForgettingCurveChart
+                topic={selectedTopic}
+                sessions={sessions}
+                selectedSessionId={selectedSessionId}
+                onScheduleReview={scheduleReviewFromDate}
+              />
+              <ReviewScheduleList
+                topic={selectedTopic}
+                sessions={sessions}
+                onScheduleReview={scheduleReviewFromDate}
+              />
+            </>
           )}
 
           {!selectedTopic && topics.length === 0 && (

@@ -20,7 +20,14 @@ export const updateTopicSchema = createTopicSchema
 export const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
-    return res.status(400).json({ errors: result.error.errors });
+    const errors = result.error.issues.map((issue) => ({
+      path: issue.path.map(String).join(".") || "body",
+      message: issue.message,
+    }));
+    return res.status(400).json({
+      message: errors.map((e) => e.message).join(" "),
+      errors,
+    });
   }
   req.body = result.data;
   next();

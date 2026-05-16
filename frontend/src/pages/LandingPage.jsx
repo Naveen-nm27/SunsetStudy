@@ -1,14 +1,12 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Headphones, Gamepad2, Sparkles, ArrowRight, Moon, Sun } from 'lucide-react';
-import { useTheme } from '../components/ThemeProvider';
+import { Headphones, Gamepad2, Sparkles, ArrowRight, Moon } from 'lucide-react';
 import BrandWordmark from '../components/BrandWordmark';
 
 export default function LandingPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const enterHref = token ? '/dashboard/memory' : '/register';
   const enterLabel = token ? 'Open app' : 'Start free';
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="landing-root dark min-h-screen relative w-full flex flex-col overflow-x-hidden bg-bg-base text-text-main">
@@ -189,7 +187,7 @@ export default function LandingPage() {
           ].map(({ title, body, icon: Icon, accent }) => (
             <div
               key={title}
-              className="fun-card p-6 md:p-7 border-2 shadow-[8px_8px_0_var(--c-shadow-deep)] dark:border-[#2f1a72]/40 dark:bg-black/25 dark:text-white dark:backdrop-blur-sm"
+              className="landing-feature-card p-6 md:p-7"
             >
               <div
                 className="inline-flex p-3 rounded-xl mb-4 border-2"
@@ -197,10 +195,10 @@ export default function LandingPage() {
               >
                 <Icon className="w-6 h-6" style={{ color: accent }} />
               </div>
-              <h3 className="font-serif text-xl md:text-2xl font-semibold tracking-tight mb-3 text-text-main dark:text-white">
+              <h3 className="font-serif text-xl md:text-2xl font-semibold tracking-tight mb-3">
                 {title}
               </h3>
-              <p className="text-text-muted dark:text-white/75 leading-relaxed font-sans text-base tracking-tight">{body}</p>
+              <p className="leading-relaxed font-sans text-base tracking-tight">{body}</p>
             </div>
           ))}
         </motion.section>

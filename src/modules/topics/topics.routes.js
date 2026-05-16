@@ -8,10 +8,11 @@ import {
   updateTopic,
 } from "./topics.controller.js";
 import { createTopicSchema, updateTopicSchema, validate } from "./topics.validation.js";
+import { injectAuthUserId } from "../../utils/authUser.js";
 
 const router = express.Router();
 
-router.post("/", validate(createTopicSchema), createTopic);
+router.post("/", injectAuthUserId, validate(createTopicSchema), createTopic);
 router.get("/due-today", getTopicsDueToday);
 router.get("/", getTopics);
 router.get("/:id", getTopicById);

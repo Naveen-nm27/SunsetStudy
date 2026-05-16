@@ -42,7 +42,10 @@ export const createBlockSchema = baseBlockSchema.superRefine((data, ctx) => {
   }
 });
 
-export const updateBlockSchema = baseBlockSchema.partial().refine(
+export const updateBlockSchema = baseBlockSchema
+  .omit({ userObjectId: true })
+  .partial()
+  .refine(
   (data) => Object.keys(data).length > 0,
   { message: "at least one field is required" }
 );
@@ -50,7 +53,14 @@ export const updateBlockSchema = baseBlockSchema.partial().refine(
 export const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
-    return res.status(400).json({ errors: result.error.errors });
+    const errors = result.error.issues.map((issue) => ({
+      path: issue.path.map(String).join(".") || "body",
+      message: issue.message,
+    }));
+    return res.status(400).json({
+      message: errors.map((e) => e.message).join(" "),
+      errors,
+    });
   }
   req.body = result.data;
   next();

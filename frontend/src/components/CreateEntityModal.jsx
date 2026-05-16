@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import api from '../api';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import moment from 'moment';
 import { subjectIdOf } from '../utils/topic';
 import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
@@ -57,7 +58,7 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
       onClose();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.message || 'An error occurred');
+      setError(getFriendlyErrorMessage(err, "We couldn't save that. Please check the form and try again."));
     }
   };
 

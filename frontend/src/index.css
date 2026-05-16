@@ -1,4 +1,4 @@
-﻿/* ── Local fonts ────────────────────────────────────────── */
+/* ── Local fonts ────────────────────────────────────────── */
 @font-face {
   font-family: "BungeeShade";
   src: url("/fonts/BungeeShade-Regular.ttf") format("truetype");
@@ -208,10 +208,29 @@ html.dark .sunset-atmosphere {
   transform: translate(-1px, -1px);
 }
 
-/* Landing / hero: CRT scanlines + subtle vignette */
+/* Landing / hero: always evening theme (independent of global theme toggle) */
 .landing-root {
   position: relative;
   isolation: isolate;
+  color-scheme: dark;
+
+  --c-bg: #0f0818;
+  --c-card: color-mix(in srgb, var(--sun-night) 55%, #0c0612);
+  --c-elevated: color-mix(in srgb, var(--sun-plum) 35%, #120a1c);
+  --c-text: #f3ecff;
+  --c-muted: #b9a8d4;
+  --c-border: color-mix(in srgb, var(--sun-gold) 12%, var(--sun-night));
+  --c-border-strong: color-mix(in srgb, var(--sun-gold) 22%, var(--sun-plum));
+  --c-shadow-deep: #050308;
+  --c-glow: color-mix(in srgb, var(--sun-ember) 18%, transparent);
+}
+
+.landing-root .sunset-atmosphere {
+  opacity: 0.32;
+}
+
+.landing-root .lofi-grain {
+  opacity: 0.06;
 }
 
 .landing-root::before {
@@ -227,10 +246,6 @@ html.dark .sunset-atmosphere {
     color-mix(in srgb, var(--sun-void) 0.08, transparent) 3px,
     color-mix(in srgb, var(--sun-void) 0.08, transparent) 5px
   );
-  opacity: 0.28;
-}
-
-html.dark .landing-root::before {
   opacity: 0.42;
 }
 
@@ -240,35 +255,34 @@ html.dark .landing-root::before {
   inset: 0;
   pointer-events: none;
   z-index: 4;
-  background: radial-gradient(ellipse 85% 65% at 50% 0%, transparent 42%, color-mix(in srgb, var(--sun-void) 0.18, transparent));
-}
-
-html.dark .landing-root::after {
   background: radial-gradient(ellipse 85% 65% at 50% 0%, transparent 40%, color-mix(in srgb, var(--sun-void) 0.4, transparent));
 }
 
-/* Full-bleed sky - light: sunny day, dark: evening sunset */
-.landing-night-sky {
+.landing-root .landing-feature-card {
+  border-radius: 1rem;
+  border: 2px solid color-mix(in srgb, var(--sun-gold) 28%, #2f1a72);
+  background: color-mix(in srgb, #120a1c 94%, #1a1028);
+  color: #f3ecff;
+  box-shadow: 8px 8px 0 #050308;
+}
+
+.landing-root .landing-feature-card:hover {
+  border-color: color-mix(in srgb, var(--sun-gold) 45%, #2f1a72);
+}
+
+.landing-root .landing-feature-card h3 {
+  color: #ffffff;
+}
+
+.landing-root .landing-feature-card p {
+  color: color-mix(in srgb, #f3ecff 88%, transparent);
+}
+
+/* Evening sunset sky — always on landing */
+.landing-root .landing-night-sky {
   position: fixed;
   inset: 0;
   z-index: -10;
-  opacity: 0.88;
-  /* Light mode: sunny day - sky blue to golden sun */
-  background: linear-gradient(
-    175deg,
-    #5bb8f5 0%,
-    #82d0f7 14%,
-    #b8e9ff 28%,
-    #e8f7ff 42%,
-    #fff8e7 58%,
-    #ffe8a0 72%,
-    #ffcf4b 86%,
-    #f9b81a 100%
-  );
-}
-
-/* Dark mode: evening sunset - deep indigo sky to amber horizon */
-html.dark .landing-night-sky {
   opacity: 0.94;
   background: linear-gradient(
     165deg,

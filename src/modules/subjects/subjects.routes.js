@@ -7,10 +7,11 @@ import {
   updateSubject,
 } from "./subjects.controller.js";
 import { createSubjectSchema, updateSubjectSchema, validate } from "./subjects.validation.js";
+import { injectAuthUserId } from "../../utils/authUser.js";
 
 const router = express.Router();
 
-router.post("/", validate(createSubjectSchema), createSubject);
+router.post("/", injectAuthUserId, validate(createSubjectSchema), createSubject);
 router.get("/", getSubjects);
 router.get("/:id", getSubjectById);
 router.patch("/:id", validate(updateSubjectSchema), updateSubject);

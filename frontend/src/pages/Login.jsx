@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import { ArrowLeft, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../components/ThemeProvider';
 import BrandWordmark from '../components/BrandWordmark';
@@ -19,7 +20,7 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(getFriendlyErrorMessage(err, "We couldn't sign you in. Check your email and password."));
     }
   };
 

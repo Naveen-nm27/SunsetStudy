@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Plus, Trash2, Brain } from 'lucide-react';
@@ -8,6 +8,7 @@ import SessionStudyTimer from '../components/SessionStudyTimer';
 import { topicIdFromSession, subjectIdOf } from '../utils/topic';
 import { getSubjectColor } from '../utils/subjectColors';
 import { useToast } from '../components/ToastProvider';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import { useConfirm } from '../components/ConfirmProvider';
 
 export default function SessionsPage() {
@@ -19,6 +20,7 @@ export default function SessionsPage() {
   const [topics, setTopics] = useState([]);
   const [filterTopicId, setFilterTopicId] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const completingRef = useRef(new Set());
 
   const load = async () => {
     const [sess, sub, top] = await Promise.all([
@@ -48,18 +50,22 @@ export default function SessionsPage() {
       await load();
     } catch (e) {
       console.error(e);
-      toast(e.response?.data?.message || 'Delete failed', 'error');
+      toast(getFriendlyErrorMessage(e, "We couldn't delete that session."), 'error');
     }
   };
 
   const mark = async (id, status) => {
+    if (completingRef.current.has(id)) return;
+    completingRef.current.add(id);
     try {
       await api.patch(`/sessions/${id}`, { status });
       await load();
-      toast('Session marked as completed', 'success');
+      if (status === 'completed') toast('Session marked as completed', 'success');
     } catch (e) {
       console.error(e);
-      toast(e.response?.data?.message || 'Update failed', 'error');
+      toast(getFriendlyErrorMessage(e, "We couldn't update that session."), 'error');
+    } finally {
+      completingRef.current.delete(id);
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import { ArrowLeft, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../components/ThemeProvider';
 import BrandWordmark from '../components/BrandWordmark';
@@ -17,7 +18,7 @@ export default function Register() {
       await api.post('/users/register', formData);
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(getFriendlyErrorMessage(err, "We couldn't create your account. Please check your details and try again."));
     }
   };
 
@@ -85,7 +86,11 @@ export default function Register() {
               value={formData.userPassword}
               onChange={(e) => setFormData({ ...formData, userPassword: e.target.value })}
               required
+              minLength={8}
             />
+            <p className="mt-2 text-sm text-text-muted leading-relaxed">
+              At least 8 characters with an uppercase letter, a number, and a special character.
+            </p>
           </div>
           <button type="submit" className="fun-button w-full mt-2">
             Create account

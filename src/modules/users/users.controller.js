@@ -8,7 +8,7 @@ export const createUser = async (req,res) => {
         const user = await createUserService(req.body);
         res.status(201).json(user)
     } catch (err){
-        res.status(500).json({message: err.message});
+        res.status(500).json({ message: "We couldn't create your account. Please try again." });
     }
 };
 
@@ -24,7 +24,7 @@ export const loginUser = async (req, res) => {
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
         res.status(200).json({ token, user: { id: user._id, userName: user.userName, userEmail: user.userEmail } });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ message: "We couldn't sign you in. Please try again in a moment." });
     }
 };
 
