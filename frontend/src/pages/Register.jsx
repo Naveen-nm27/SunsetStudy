@@ -41,8 +41,8 @@ export default function Register() {
       </Link>
 
       <div className="w-full max-w-md fun-card p-10 md:p-12 shadow-[8px_8px_0_var(--c-shadow-deep)] relative z-10">
-        <div className="flex justify-center mb-4">
-          <BrandWordmark />
+        <div className="w-full min-w-0 flex justify-center mb-4 overflow-hidden">
+          <BrandWordmark className="text-2xl sm:text-3xl md:text-4xl max-w-full" />
         </div>
         <p className="font-pixel text-base md:text-lg text-sunset-orange text-center mb-2 tracking-tight">NEW GAME</p>
         <h2 className="text-3xl md:text-4xl font-serif font-semibold text-center mb-2 text-text-main tracking-tight">Create your account</h2>

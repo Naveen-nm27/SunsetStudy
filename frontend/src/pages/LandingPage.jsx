@@ -57,11 +57,11 @@ export default function LandingPage() {
               Lofi study quest
             </p>
             <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-semibold text-sunset-deep dark:text-white leading-[1.12] tracking-tight drop-shadow-sm dark:drop-shadow-lg">
-              Learn like it&apos;s{' '}
-              <span className="text-sunset-orange dark:text-[#f8b51b] not-italic">level one</span>
+              Spaced Repetition Made Beautiful{' '}
+              <span className="text-sunset-orange dark:text-[#f8b51b] not-italic">Study Smarter.</span>
               <br />
               <span className="text-text-muted dark:text-white/90 font-normal text-3xl sm:text-4xl md:text-5xl">
-                — then beat the forgetting curve.
+               “Sunset Your Stress, Not Your Memory.”
               </span>
             </h1>
             <p className="text-lg md:text-xl text-text-muted dark:text-white/80 max-w-xl leading-relaxed font-sans font-normal tracking-tight">
