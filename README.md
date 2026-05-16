@@ -107,49 +107,49 @@ erDiagram
     TOPIC ||--o{ SESSION : reviewed_in
 
     USER {
-        ObjectId _id PK
+        ObjectId id PK
         String userName
         String userEmail
         String userPassword
     }
 
     SUBJECT {
-        ObjectId _id PK
+        ObjectId id PK
         ObjectId userObjectId FK
         String name
-        String type "academic|hobby|project"
+        String type
         String description
         String color
-        String status "active|archived"
+        String status
     }
 
     TOPIC {
-        ObjectId _id PK
+        ObjectId id PK
         ObjectId subjectObjectId FK
         ObjectId userObjectId FK
         String name
         String color
-        String status "not started|in progress|done"
+        String status
         Number reviewStage
         Date nextReviewDate
         Date lastStudiedAt
     }
 
     BLOCK {
-        ObjectId _id PK
+        ObjectId id PK
         ObjectId userObjectId FK
         String title
-        String type "lecture|sleep|family|work|other"
+        String type
         Date date
         String startTime
         String endTime
         Boolean recurring
-        String[] days
+        String days
         String note
     }
 
     SESSION {
-        ObjectId _id PK
+        ObjectId id PK
         ObjectId userObjectId FK
         ObjectId subjectObjectId FK
         ObjectId topicObjectId FK
@@ -158,9 +158,11 @@ erDiagram
         String endTime
         Number rating
         String review
-        String status "planned|completed"
+        String status
     }
 ```
+
+Enum values in the app: **Subject** `type` — `academic`, `hobby`, `project`; `status` — `active`, `archived`. **Topic** `status` — `not started`, `in progress`, `done`. **Block** `type` — `lecture`, `sleep`, `family`, `work`, `other`. **Session** `status` — `planned`, `completed`.
 
 ### Spaced Repetition Workflow
 
@@ -230,10 +232,9 @@ Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the he
 | `PATCH` | `/subjects/:id` | Update a subject |
 | `DELETE` | `/subjects/:id` | Delete a subject |
 
-**Create subject** body example:
+**Create subject** body example (`userObjectId` is set automatically from your JWT):
 ```json
 {
-  "userObjectId": "<mongo_user_id>",
   "name": "Data Structures",
   "type": "academic",
   "description": "CS201 Core Module",
