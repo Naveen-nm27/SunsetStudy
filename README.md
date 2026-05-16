@@ -19,31 +19,31 @@ Traditional study methods often lead to the **"Illusion of Competence"**—stude
 
 ## Features
 
-- **Spaced Repetition Algorithm:** Automatically calculates and prompts topics that are "Due Today" based on your previous study sessions.
-- **Subject & Topic Hierarchy:** Categorize learning into Academics, Hobbies, or Projects.
-- **Time Management Calendar:** Visually manage Study Blocks and individual Sessions.
-- **Progress Tracking:** Monitor the review stages of your topics from "Not Started" to "Done".
-- **Secure Authentication:** JWT-based secure user registration and login.
-- **Beautiful, Fun UI:** Sunset-themed aesthetics with highly engaging, modern, and accessible design.
+- **Spaced Repetition Algorithm:** Automatically schedules the next review using intervals of **1, 3, 7, 14, 30, and 60 days** after each completed session. Topics with `nextReviewDate` on or before today appear as due.
+- **Subject & Topic Hierarchy:** Categorize learning into **Academic**, **Hobby**, or **Project** subjects; track each topic from **Not Started** → **In Progress** → **Done**.
+- **Time Management Calendar:** Schedule recurring or one-off **Study Blocks** (lectures, work, family time, etc.) separately from topic **Sessions**.
+- **Session Logging:** Plan and complete study sessions per topic; completing a session advances the topic’s review schedule and can auto-create the next planned session.
+- **Secure Authentication:** JWT-based registration and login with bcrypt-hashed passwords.
+- **Beautiful, Fun UI:** Sunset-themed aesthetics with engaging, modern, and accessible design (Memory Hub, Timeline, Library, Sessions).
 
 ---
 
 ## Technologies Used
 
 ### Frontend
-- **React 19** with **Vite** (Blazing fast development)
-- **TailwindCSS v4** (Modern utility-first styling)
-- **Framer Motion** (Fluid micro-interactions and animations)
-- **React Router DOM** (Client-side routing)
-- **React Big Calendar** (Dynamic schedule visualization)
+- **React 19** with **Vite** (fast development and builds)
+- **Tailwind CSS v4** (utility-first styling via `@tailwindcss/vite`)
+- **Framer Motion** (micro-interactions and animations)
+- **React Router DOM v7** (client-side routing)
+- **React Big Calendar** (schedule visualization)
 - **Axios** (API communication)
 
-### Backend 
-- **Node.js & Express.js** (Robust REST API architecture)
-- **MongoDB & Mongoose** (NoSQL Database for flexible document models)
-- **JSON Web Tokens (JWT)** (Stateless, secure authentication)
-- **Bcrypt.js** (Password hashing)
-- **Zod** (Strict schema validation)
+### Backend
+- **Node.js & Express.js** (REST API)
+- **MongoDB & Mongoose** (document database)
+- **JSON Web Tokens (JWT)** (stateless authentication)
+- **Bcrypt.js** (password hashing)
+- **Zod** (request validation)
 
 ---
 
@@ -53,37 +53,37 @@ Traditional study methods often lead to the **"Illusion of Competence"**—stude
 graph TD
     Root["SunsetStudy (Root)"] --> Frontend["/frontend (React Client)"]
     Root --> Backend["/src (Express Server)"]
-    Root --> RootFiles["Config Files"]
+    Root --> RootFiles["Config & Tooling"]
 
     %% Frontend Structure
     Frontend --> F_Src["/src"]
-    F_Src --> F_Components["/components (Reusables)"]
-    F_Src --> F_Pages["/pages (Route Views)"]
-    F_Src --> F_Utils["/utils (Helpers)"]
-    F_Src --> F_App["App.jsx & index.css"]
+    F_Src --> F_Components["/components"]
+    F_Src --> F_Pages["/pages"]
+    F_Src --> F_Utils["/utils & /constants"]
+    F_Src --> F_App["App.jsx & main.jsx"]
 
     %% Backend Structure
-    Backend --> B_Config["/config"]
-    Backend --> B_Middlewares["/middlewares (Auth, Error)"]
-    Backend --> B_Modules["/modules (Domain Logic)"]
-    
+    Backend --> B_Middlewares["/middlewares (auth)"]
+    Backend --> B_Modules["/modules (domain logic)"]
+
     B_Modules --> Mod_Users["/users"]
     B_Modules --> Mod_Subjects["/subjects"]
     B_Modules --> Mod_Topics["/topics"]
     B_Modules --> Mod_Blocks["/blocks"]
     B_Modules --> Mod_Sessions["/sessions"]
-    
+
     Backend --> B_App["app.js"]
     Backend --> B_DB["db.js"]
 
     RootFiles --> Pkg["package.json"]
     RootFiles --> Env[".env"]
-    RootFiles --> Index["index.js (Entry)"]
+    RootFiles --> Index["index.js (entry)"]
+    RootFiles --> Seed["/seed & scripts/seed-demo.mjs"]
 
     classDef folder fill:#ff9f43,stroke:#e67e22,stroke-width:2px,color:#fff;
     classDef file fill:#54a0ff,stroke:#2e86de,stroke-width:2px,color:#fff;
-    
-    class Frontend,Backend,F_Src,F_Components,F_Pages,F_Utils,B_Config,B_Middlewares,B_Modules,Mod_Users,Mod_Subjects,Mod_Topics,Mod_Blocks,Mod_Sessions folder;
+
+    class Frontend,Backend,F_Src,F_Components,F_Pages,F_Utils,B_Middlewares,B_Modules,Mod_Users,Mod_Subjects,Mod_Topics,Mod_Blocks,Mod_Sessions,Seed folder;
     class RootFiles,F_App,B_App,B_DB,Pkg,Env,Index file;
 ```
 
@@ -93,51 +93,78 @@ graph TD
 
 ### Entity-Relationship Diagram (Database)
 
+Study **Blocks** (calendar commitments) and **Sessions** (topic study logs) are separate: sessions link to subjects and topics, not to blocks.
+
 ```mermaid
 erDiagram
-    USER ||--o{ SUBJECT : creates
-    USER ||--o{ TOPIC : tracks
+    USER ||--o{ SUBJECT : owns
+    USER ||--o{ TOPIC : owns
     USER ||--o{ BLOCK : schedules
     USER ||--o{ SESSION : logs
-    
+
     SUBJECT ||--o{ TOPIC : contains
-    BLOCK ||--o{ SESSION : contains
+    SUBJECT ||--o{ SESSION : context_for
     TOPIC ||--o{ SESSION : reviewed_in
 
     USER {
-        ObjectId id PK
-        String name
-        String email
-        String password
+        ObjectId _id PK
+        String userName
+        String userEmail
+        String userPassword
     }
-    
+
     SUBJECT {
-        ObjectId id PK
+        ObjectId _id PK
         ObjectId userObjectId FK
         String name
-        String type "academic/hobby/project"
+        String type "academic|hobby|project"
+        String description
         String color
+        String status "active|archived"
     }
-    
+
     TOPIC {
-        ObjectId id PK
+        ObjectId _id PK
         ObjectId subjectObjectId FK
+        ObjectId userObjectId FK
         String name
+        String color
+        String status "not started|in progress|done"
         Number reviewStage
         Date nextReviewDate
         Date lastStudiedAt
     }
-    
+
+    BLOCK {
+        ObjectId _id PK
+        ObjectId userObjectId FK
+        String title
+        String type "lecture|sleep|family|work|other"
+        Date date
+        String startTime
+        String endTime
+        Boolean recurring
+        String[] days
+        String note
+    }
+
     SESSION {
-        ObjectId id PK
+        ObjectId _id PK
+        ObjectId userObjectId FK
+        ObjectId subjectObjectId FK
         ObjectId topicObjectId FK
-        Date startTime
-        Date endTime
-        String status
+        Date date
+        String startTime
+        String endTime
+        Number rating
+        String review
+        String status "planned|completed"
     }
 ```
 
 ### Spaced Repetition Workflow
+
+When a session is created or updated with `status: "completed"`, the server advances the topic’s `reviewStage` and `nextReviewDate`, and may create the next **planned** session automatically.
 
 ```mermaid
 sequenceDiagram
@@ -146,60 +173,105 @@ sequenceDiagram
     participant Server
     participant Database
 
-    User->>Frontend: Logs in & views Dashboard
-    Frontend->>Server: GET /topics/due-today
-    Server->>Database: Query topics where nextReviewDate <= now
-    Database-->>Server: Return Due Topics
-    Server-->>Frontend: Display Topics to User
-    User->>Frontend: Completes Study Session for a Topic
-    Frontend->>Server: POST /sessions & PATCH /topics/:id
-    Server->>Server: Calculate new nextReviewDate (reviewStage++)
-    Server->>Database: Update Topic data
+    User->>Frontend: Logs in & opens Memory Hub
+    Frontend->>Server: GET /topics/due-today (Bearer token)
+    Server->>Database: Topics where nextReviewDate <= now
+    Database-->>Server: Due topics
+    Server-->>Frontend: Display due topics
+    User->>Frontend: Completes a study session
+    Frontend->>Server: POST /sessions or PATCH /sessions/:id (status completed)
+    Server->>Server: advanceTopicReviewSchedule (interval by reviewStage)
+    Server->>Database: Update topic; optional next planned session
     Database-->>Server: Success
-    Server-->>Frontend: Update UI
+    Server-->>Frontend: Updated session & topic data
 ```
 
 ---
 
 ## API Endpoints
 
-### Users
-- `POST /users/register` - Register a new account.
-- `POST /users/login` - Authenticate user & get JWT.
-  ```json
-  // Request Body Example
-  {
-    "email": "student@example.com",
-    "password": "securepassword123"
-  }
-  ```
+Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the header:
 
-### Subjects
-- `GET /subjects` - Fetch all subjects for the authenticated user.
-- `POST /subjects` - Create a new subject.
-  ```json
-  // Request Body Example
-  {
-    "name": "Data Structures",
-    "type": "academic",
-    "description": "CS201 Core Module",
-    "color": "#FF5733"
-  }
-  ```
+`Authorization: Bearer <your_jwt_token>`
 
-### Topics
-- `GET /topics/due-today` - **Core Feature:** Fetches all topics scheduled for review today based on the spaced repetition algorithm.
-- `POST /topics` - Add a new topic under a subject.
+### Users (public)
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/users/register` | Register a new account |
+| `POST` | `/users/login` | Authenticate and receive a JWT |
+| `GET` | `/users` | List users |
+| `GET` | `/users/:id` | Get user by ID |
+| `PATCH` | `/users/:id` | Update user |
+| `DELETE` | `/users/:id` | Delete user |
 
-### Study Sessions & Blocks
-- `POST /blocks` - Create a new time-block in the calendar.
-- `POST /sessions` - Log a completed study session (Triggers spaced repetition interval update).
+**Register** body example:
+```json
+{
+  "userName": "student01",
+  "userEmail": "student@example.com",
+  "userPassword": "SecurePass1!"
+}
+```
+
+**Login** body example:
+```json
+{
+  "userEmail": "student@example.com",
+  "userPassword": "SecurePass1!"
+}
+```
+
+### Subjects (auth required)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/subjects` | List subjects for the user |
+| `GET` | `/subjects/:id` | Get one subject |
+| `POST` | `/subjects` | Create a subject |
+| `PATCH` | `/subjects/:id` | Update a subject |
+| `DELETE` | `/subjects/:id` | Delete a subject |
+
+**Create subject** body example:
+```json
+{
+  "userObjectId": "<mongo_user_id>",
+  "name": "Data Structures",
+  "type": "academic",
+  "description": "CS201 Core Module",
+  "color": "#FF5733"
+}
+```
+
+### Topics (auth required)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/topics/due-today` | Topics due for review today (spaced repetition) |
+| `GET` | `/topics` | List topics |
+| `GET` | `/topics/:id` | Get one topic |
+| `POST` | `/topics` | Create a topic under a subject |
+| `PATCH` | `/topics/:id` | Update a topic |
+| `DELETE` | `/topics/:id` | Delete a topic |
+
+### Blocks (auth required)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/blocks` | List calendar blocks |
+| `GET` | `/blocks/:id` | Get one block |
+| `POST` | `/blocks` | Create a time block |
+| `PATCH` | `/blocks/:id` | Update a block |
+| `DELETE` | `/blocks/:id` | Delete a block |
+
+### Sessions (auth required)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/sessions` | List study sessions |
+| `GET` | `/sessions/:id` | Get one session |
+| `POST` | `/sessions` | Create a session; if `status` is `completed`, updates topic schedule |
+| `PATCH` | `/sessions/:id` | Update a session; marking `completed` triggers spaced repetition |
+| `DELETE` | `/sessions/:id` | Delete a session |
 
 ---
 
 ## Setup Instructions
-
-Follow these steps to set up the project locally on your machine:
 
 1. **Clone the repository**
    ```bash
@@ -211,46 +283,64 @@ Follow these steps to set up the project locally on your machine:
    cd SunsetStudy
    ```
 
-3. **Install Backend Dependencies**
+3. **Install backend dependencies** (from the repo root)
    ```bash
    npm install
    ```
 
-4. **Install Frontend Dependencies**
+4. **Install frontend dependencies**
    ```bash
    cd frontend
    npm install
    cd ..
    ```
 
-5. **Set up Environment Variables**
-   Create a `.env` file in the root directory and add your connection strings:
+5. **Environment variables**
+
+   Create a `.env` file in the **project root**:
+
    ```env
    PORT=3000
-   MONGO_URI=your_mongodb_connection_string
+   MONGODB_URI=your_mongodb_connection_string
    JWT_SECRET=your_super_secret_jwt_key
+   ```
+
+   `MONGODB_URI` is required by `src/db.js` and the demo seed script.
+
+6. **Optional: load demo data**
+   ```bash
+   npm run seed:demo
    ```
 
 ---
 
 ## How to Run the Project
 
-You will need two terminal windows to run both the client and the server simultaneously.
+Use two terminals—backend and frontend.
 
-**Terminal 1: Start the Backend Server**
+**Terminal 1 — Backend** (from the repo root):
 ```bash
-# From the root directory
 npm start
 ```
-*Note: This starts the Node server on `http://localhost:3000` using nodemon for hot-reloading.*
+Starts the API on `http://localhost:3000` (default `PORT` from `.env` or `3000`). Uses **nodemon** for reload on file changes.
 
-**Terminal 2: Start the Frontend Vite Server**
+**Terminal 2 — Frontend** (from `frontend/`):
 ```bash
-# From the root directory, navigate to frontend
-cd frontend
 npm run dev
 ```
-*Note: This will start the React app on `http://localhost:5173` (or similar).*
+Starts the Vite dev server (default `http://localhost:5173`). The client calls the API at `http://localhost:3000` (see `frontend/src/api.js`).
+
+### App routes (frontend)
+
+| Path | Description |
+|------|-------------|
+| `/` | Landing page |
+| `/login`, `/register` | Authentication |
+| `/dashboard/memory` | Memory Hub (due topics) |
+| `/dashboard/timeline` | Timeline / calendar |
+| `/dashboard/library` | Subjects & topics library |
+| `/dashboard/sessions` | Study sessions |
+| `/profile` | User profile (protected) |
 
 ---
 <div align="center">
