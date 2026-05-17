@@ -3,7 +3,7 @@
     "description": "SunsetStudy demo dataset — import with: npm run seed:demo",
     "login": {
       "userEmail": "demo@sunsetstudy.app",
-      "userPassword": "demo123"
+      "userPassword": "Demo@1234"
     },
     "note": "Log in with the credentials above after seeding. All records share userObjectId 674a1b2c3d4e5f6789010001."
   },
@@ -12,7 +12,7 @@
       "_id": { "$oid": "674a1b2c3d4e5f6789010001" },
       "userName": "demo",
       "userEmail": "demo@sunsetstudy.app",
-      "userPassword": "$2b$10$fm3UmZF0fZcTtAwtzpAnJONHaSGR2KBBK2M8eijSLhlhcdTlENJpq"
+      "userPassword": "$2b$10$7kZ5gGmpWIwoiowjGuY/NOb1duFcCwSWnIyJTeIEUylsCEBcKpWDu"
     }
   ],
   "subjects": [
@@ -39,6 +39,14 @@
       "type": "project",
       "description": "Personal site refresh — archived sample",
       "status": "archived"
+    },
+    {
+      "_id": { "$oid": "674a1b2c3d4e5f6789010014" },
+      "userObjectId": { "$oid": "674a1b2c3d4e5f6789010001" },
+      "name": "Machine Learning",
+      "type": "academic",
+      "description": "Introductory ML course concepts",
+      "status": "active"
     }
   ],
   "topics": [
@@ -79,6 +87,16 @@
       "reviewStage": 4,
       "lastStudiedAt": { "$date": "2026-04-28T10:00:00.000Z" },
       "nextReviewDate": { "$date": "2026-05-28T00:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "674a1b2c3d4e5f6789010025" },
+      "subjectObjectId": { "$oid": "674a1b2c3d4e5f6789010014" },
+      "userObjectId": { "$oid": "674a1b2c3d4e5f6789010001" },
+      "name": "Linear Regression",
+      "status": "in progress",
+      "reviewStage": 2,
+      "lastStudiedAt": { "$date": "2026-05-14T10:00:00.000Z" },
+      "nextReviewDate": { "$date": "2026-05-16T00:00:00.000Z" }
     }
   ],
   "sessions": [
@@ -173,6 +191,19 @@
       "endTime": "17:00",
       "rating": 5,
       "status": "completed"
+    },
+    {
+      "_id": { "$oid": "674a1b2c3d4e5f6789010039" },
+      "userObjectId": { "$oid": "674a1b2c3d4e5f6789010001" },
+      "subjectObjectId": { "$oid": "674a1b2c3d4e5f6789010014" },
+      "topicObjectId": { "$oid": "674a1b2c3d4e5f6789010025" },
+      "date": { "$date": "2026-05-14T00:00:00.000Z" },
+      "startTime": "10:00",
+      "endTime": "11:30",
+      "rating": 4,
+      "review": "Good understanding of cost function.",
+      "status": "completed",
+      "completedAt": { "$date": "2026-05-14T11:30:00.000Z" }
     }
   ],
   "blocks": [
@@ -235,6 +266,18 @@
       "recurring": false,
       "days": [],
       "note": "Wind-down block"
+    },
+    {
+      "_id": { "$oid": "674a1b2c3d4e5f6789010046" },
+      "userObjectId": { "$oid": "674a1b2c3d4e5f6789010001" },
+      "title": "Evening Reading",
+      "type": "other",
+      "date": { "$date": "2026-05-12T00:00:00.000Z" },
+      "startTime": "21:00",
+      "endTime": "22:00",
+      "recurring": true,
+      "days": ["tuesday", "thursday"],
+      "note": "Read a book"
     }
   ]
 }
