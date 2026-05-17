@@ -182,7 +182,7 @@ sequenceDiagram
 
     User->>Frontend: Complete a study session
     Frontend->>Server: Create or update session as completed
-    Server->>Server: advanceTopicReviewSchedule()
+    Server->>Server: advanceTopicReviewSchedule
     Server->>Database: Update topic and next planned session
     Database-->>Server: Success
     Server-->>Frontend: Return updated session and topic
