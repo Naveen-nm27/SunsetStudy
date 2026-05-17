@@ -175,17 +175,18 @@ sequenceDiagram
     participant Server
     participant Database
 
-    User->>Frontend: Logs in & opens Memory Hub
-    Frontend->>Server: GET /topics/due-today (Bearer token)
-    Server->>Database: Topics where nextReviewDate <= now
+    User->>Frontend: Log in and open Memory Hub
+    Frontend->>Server: GET topics due today
+    Server->>Database: Find topics with nextReviewDate due
     Database-->>Server: Due topics
-    Server-->>Frontend: Display due topics
-    User->>Frontend: Completes a study session
-    Frontend->>Server: POST /sessions or PATCH /sessions/:id (status completed)
-    Server->>Server: advanceTopicReviewSchedule (interval by reviewStage)
-    Server->>Database: Update topic; optional next planned session
+    Server-->>Frontend: Show due topics
+
+    User->>Frontend: Complete a study session
+    Frontend->>Server: Create or update session as completed
+    Server->>Server: advanceTopicReviewSchedule()
+    Server->>Database: Update topic and next planned session
     Database-->>Server: Success
-    Server-->>Frontend: Updated session & topic data
+    Server-->>Frontend: Return updated session and topic
 ```
 
 ---
