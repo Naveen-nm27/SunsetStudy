@@ -8,6 +8,7 @@ import ForgettingCurveChart from '../components/ForgettingCurveChart';
 import ReviewScheduleList from '../components/ReviewScheduleList';
 import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { subjectIdOf, topicIdFromSession } from '../utils/topic';
+import { sessionCompletionMs } from '../utils/sessionTimeline';
 import { getSubjectColor } from '../utils/subjectColors';
 
 export default function MemoryHub() {
@@ -206,11 +207,17 @@ export default function MemoryHub() {
               onChange={(e) => onSessionChange(e.target.value)}
             >
               <option value="">None</option>
-              {topicSessions.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {moment(s.date).format('MMM D')} · {s.status} · {s.startTime}–{s.endTime}
-                </option>
-              ))}
+              {topicSessions.map((s) => {
+                const when =
+                  s.status === 'completed' && sessionCompletionMs(s)
+                    ? moment(sessionCompletionMs(s)).format('MMM D, h:mm A')
+                    : moment(s.date).format('MMM D');
+                return (
+                  <option key={s._id} value={s._id}>
+                    {when} · {s.status} · {s.startTime}–{s.endTime}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

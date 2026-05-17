@@ -37,6 +37,28 @@ export default function ReviewScheduleList({ topic, sessions, onScheduleReview }
       </div>
 
       <ul className="divide-y divide-border-color rounded-xl border border-border-color overflow-hidden">
+        {completions.map((c) => {
+          const dateLabel = moment(c.t).format('dddd, MMM D, YYYY');
+          const relative = moment(c.t).fromNow();
+          return (
+            <li
+              key={`comp-${c._id}`}
+              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-bg-elevated/20 opacity-70"
+            >
+              <div>
+                <p className="font-serif text-base text-text-main line-through decoration-text-muted/50">{dateLabel}</p>
+                <p className="font-mono text-xs text-text-muted mt-0.5">
+                  Completed {relative}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="font-mono text-[10px] uppercase font-bold px-2 py-1 rounded-lg border border-sunset-pink/50 text-sunset-pink bg-sunset-pink/5">
+                  Completed
+                </span>
+              </div>
+            </li>
+          );
+        })}
         {reviews.map((r) => {
           const dateLabel = moment(r.dateMs).format('dddd, MMM D, YYYY');
           const relative = moment(r.dateMs).fromNow();

@@ -54,6 +54,11 @@ const sessionSchema = new Schema(
       default: "planned",
       index: true,
     },
+    /** When the session was marked completed (used for charts / retention). */
+    completedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

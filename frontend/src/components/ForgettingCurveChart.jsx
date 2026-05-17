@@ -1,17 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import moment from 'moment';
 import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { topicIdFromSession } from '../utils/topic';
+import {
+  formatSessionChartLabel,
+  sessionChartMs,
+  startOfDayMs,
+} from '../utils/sessionTimeline';
 
 const TAU_DAYS = 5;
 const PAD = { top: 24, right: 28, bottom: 44, left: 52 };
 const W = 720;
 const H = 320;
 const MAX_PROJECTED_REVIEWS = 10;
-
-function startOfDayMs(d) {
-  return moment(d).startOf('day').valueOf();
-}
 
 function retentionAfterGap(daysSince) {
   return Math.max(0, Math.min(100, 100 * Math.exp(-daysSince / TAU_DAYS)));
@@ -51,6 +52,7 @@ function buildDecaySegments(completions, xMaxMs, xScale, yScale, stepMs = 36e5 *
  * Shows scheduled planned sessions and projected future reviews from the spaced-repetition schedule.
  */
 export default function ForgettingCurveChart({ topic, sessions, selectedSessionId, onScheduleReview }) {
+  const [hoverInfo, setHoverInfo] = useState(null);
   const topicId = topic?._id;
 
   const chartModel = useMemo(() => {
@@ -61,7 +63,7 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
     const topicSessions = sessions.filter((s) => topicIdFromSession(s) === topicId);
     const completions = topicSessions
       .filter((s) => s.status === 'completed')
-      .map((s) => ({ ...s, t: startOfDayMs(s.date) }))
+      .map((s) => ({ ...s, t: sessionChartMs(s) }))
       .sort((a, b) => a.t - b.t);
 
     const plannedRaw = topicSessions
@@ -140,13 +142,34 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
 
     const markers = [];
 
+    const completionsByDay = new Map();
     completions.forEach((c) => {
+      const dayMs = moment(c.t).startOf('day').valueOf();
+      if (!completionsByDay.has(dayMs)) completionsByDay.set(dayMs, []);
+      completionsByDay.get(dayMs).push(c);
+    });
+
+    completions.forEach((c) => {
+      const dayMs = moment(c.t).startOf('day').valueOf();
+      const dayComps = completionsByDay.get(dayMs);
+      
+      let label = '';
+      if (dayComps.length > 1) {
+        const details = dayComps.map((dc, idx) => {
+           const time = moment(dc.t).format('h:mm A');
+           return `${idx + 1}. ${time} (${dc.startTime || '?'} - ${dc.endTime || '?'})`;
+        }).join('\n');
+        label = `Multiple sessions completed on ${moment(dayMs).format('MMM D')}:\n${details}`;
+      } else {
+        label = `Completed on ${moment(c.t).format('MMM D, h:mm A')}\nTime: ${c.startTime || '?'} - ${c.endTime || '?'}`;
+      }
+
       markers.push({
         kind: 'done',
         t: c.t,
         x: xScale(c.t),
         y: yScale(100),
-        label: moment(c.t).format('MMM D'),
+        label,
         id: c._id,
       });
     });
@@ -198,7 +221,7 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
     if (selectedSessionId) {
       const sel = topicSessions.find((s) => s._id === selectedSessionId);
       if (sel) {
-        const st = startOfDayMs(sel.date);
+        const st = sessionChartMs(sel);
         let lastComp = null;
         for (const c of completions) {
           if (c.t <= st) lastComp = c.t;
@@ -211,7 +234,7 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
             t: st,
             x: xScale(st),
             y: yScale(retentionAfterGap(daysSince)),
-            label: moment(st).format('MMM D'),
+            label: formatSessionChartLabel(sel, st),
           });
         }
       }
@@ -253,6 +276,19 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
     if (m.kind === 'planned' || m.kind === 'projected') {
       onScheduleReview({ dateMs: m.t });
     }
+  };
+
+  const handleMouseEnter = (e, m) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoverInfo({
+      marker: m,
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setHoverInfo(null);
   };
 
   return (
@@ -370,7 +406,6 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
           if (m.kind === 'planned') {
             return (
               <g key={`planned-${m.sessionId || i}`}>
-                <title>{m.label} — click to add session on this date</title>
                 <line
                   x1={m.x}
                   y1={PAD.top}
@@ -392,6 +427,8 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
                   role={onScheduleReview ? 'button' : undefined}
                   tabIndex={onScheduleReview ? 0 : undefined}
                   onClick={() => handleReviewClick(m)}
+                  onMouseEnter={(e) => handleMouseEnter(e, m)}
+                  onMouseLeave={handleMouseLeave}
                   onKeyDown={(e) => {
                     if (!onScheduleReview) return;
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -406,7 +443,6 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
           if (m.kind === 'projected') {
             return (
               <g key={`proj-${m.t}-${i}`}>
-                <title>{m.label} — click to add session on this date</title>
                 <circle
                   cx={m.x}
                   cy={m.y}
@@ -419,6 +455,8 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
                   role={onScheduleReview ? 'button' : undefined}
                   tabIndex={onScheduleReview ? 0 : undefined}
                   onClick={() => handleReviewClick(m)}
+                  onMouseEnter={(e) => handleMouseEnter(e, m)}
+                  onMouseLeave={handleMouseLeave}
                   onKeyDown={(e) => {
                     if (!onScheduleReview) return;
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -433,7 +471,6 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
           if (m.kind === 'today') {
             return (
               <g key="today-marker">
-                <title>{m.label}</title>
                 <line
                   x1={m.x}
                   y1={PAD.top}
@@ -444,7 +481,16 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
                   strokeDasharray="3 5"
                   className="opacity-35"
                 />
-                <circle cx={m.x} cy={m.y} r="5" fill="var(--c-bg)" stroke="var(--c-orange)" strokeWidth="2" />
+                <circle 
+                  cx={m.x} 
+                  cy={m.y} 
+                  r="5" 
+                  fill="var(--c-bg)" 
+                  stroke="var(--c-orange)" 
+                  strokeWidth="2" 
+                  onMouseEnter={(e) => handleMouseEnter(e, m)}
+                  onMouseLeave={handleMouseLeave}
+                />
               </g>
             );
           }
@@ -458,17 +504,48 @@ export default function ForgettingCurveChart({ topic, sessions, selectedSessionI
                 fill="var(--c-orange)"
                 stroke="var(--c-bg)"
                 strokeWidth="2"
+                onMouseEnter={(e) => handleMouseEnter(e, m)}
+                onMouseLeave={handleMouseLeave}
               />
             );
           }
           return (
             <g key={m.id || `done-${i}`}>
-              <title>{m.label}</title>
-              <circle cx={m.x} cy={m.y} r="5" fill="var(--c-pink)" stroke="var(--c-bg)" strokeWidth="2" opacity="0.9" />
+              <circle 
+                cx={m.x} 
+                cy={m.y} 
+                r="5" 
+                fill="var(--c-pink)" 
+                stroke="var(--c-bg)" 
+                strokeWidth="2" 
+                opacity="0.9" 
+                onMouseEnter={(e) => handleMouseEnter(e, m)}
+                onMouseLeave={handleMouseLeave}
+              />
             </g>
           );
         })}
       </svg>
+
+      {hoverInfo && (
+        <div
+          className="fixed z-50 bg-bg-elevated/95 backdrop-blur-md border border-border-color shadow-xl rounded-xl p-3 text-xs font-mono max-w-xs pointer-events-none"
+          style={{
+            left: hoverInfo.x,
+            top: hoverInfo.y - 12,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="whitespace-pre-wrap leading-relaxed text-text-main font-medium">
+            {hoverInfo.marker.label}
+          </div>
+          {(hoverInfo.marker.kind === 'planned' || hoverInfo.marker.kind === 'projected') && onScheduleReview && (
+            <div className="mt-2 text-sunset-orange font-bold uppercase tracking-widest text-[10px]">
+              Click to plan session
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

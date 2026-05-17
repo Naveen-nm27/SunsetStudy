@@ -15,6 +15,7 @@ export const createSessionSchema = z.object({
     .optional(),
   review: z.string().trim().optional(),
   status: SessionStatusEnum.optional(),
+  completedAt: z.coerce.date().nullable().optional(),
 });
 
 export const updateSessionSchema = createSessionSchema

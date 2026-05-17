@@ -1,7 +1,20 @@
 import { advanceTopicReviewSchedule } from "../topics/topics.service.js";
 import { Session } from "./sessions.model.js";
 
+function applyCompletionTimestamp(session, data, becomingCompleted) {
+  if (becomingCompleted) {
+    session.completedAt = data.completedAt ?? new Date();
+    return;
+  }
+  if (data.status === "planned") {
+    session.completedAt = null;
+  }
+}
+
 export const createSessionService = async (data) => {
+  if (data.status === "completed" && !data.completedAt) {
+    data.completedAt = new Date();
+  }
   const session = new Session(data);
   await session.save();
 
@@ -36,6 +49,7 @@ export const updateSessionByIdService = async (id, data) => {
   const becomingCompleted = !wasCompleted && nextStatus === "completed";
 
   Object.assign(session, data);
+  applyCompletionTimestamp(session, data, becomingCompleted);
   await session.save();
 
   if (becomingCompleted && session.topicObjectId) {

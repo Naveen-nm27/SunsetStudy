@@ -1,12 +1,10 @@
 import moment from 'moment';
 import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
 import { topicIdFromSession } from './topic';
+import { sessionChartMs, startOfDayMs } from './sessionTimeline';
 
 export const MAX_PROJECTED_REVIEWS = 10;
-
-export function startOfDayMs(d) {
-  return moment(d).startOf('day').valueOf();
-}
+export { startOfDayMs };
 
 function intervalIdx(stage) {
   return Math.min(stage, REVIEW_INTERVAL_DAYS.length - 1);
@@ -23,7 +21,7 @@ export function computeReviewSchedule({ topic, sessions, maxReviews = MAX_PROJEC
   const topicSessions = sessions.filter((s) => topicIdFromSession(s) === topicId);
   const completions = topicSessions
     .filter((s) => s.status === 'completed')
-    .map((s) => ({ ...s, t: startOfDayMs(s.date) }))
+    .map((s) => ({ ...s, t: sessionChartMs(s) }))
     .sort((a, b) => a.t - b.t);
 
   if (completions.length === 0) {
