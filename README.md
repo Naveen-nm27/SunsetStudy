@@ -167,7 +167,6 @@ Enum values in the app: **Subject** `type` — `academic`, `hobby`, `project`; `
 ### Spaced Repetition Workflow
 
 When a session is created or updated with `status: "completed"`, the server advances the topic’s `reviewStage` and `nextReviewDate`, and may create the next **planned** session automatically.
-
 ```mermaid
 sequenceDiagram
     participant User
@@ -188,7 +187,6 @@ sequenceDiagram
     Database-->>Server: Success
     Server-->>Frontend: Return updated session and topic
 ```
-
 ---
 
 ## API Endpoints
