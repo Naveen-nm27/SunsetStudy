@@ -9,7 +9,7 @@
 
 ## Problem Description
 
-Traditional study methods often lead to the **"Illusion of Competence"**—students read material once, feel they know it, but experience rapid forgetting soon after. Without a systematic approach to reviewing materials, students struggle to manage their time effectively, lose track of what needs to be reviewed, and inevitably resort to stressful, low-retention cramming before exams.
+Traditional study methods often lead to the **"Illusion of Competence"** students read material once, feel they know it, but experience rapid forgetting soon after. Without a systematic approach to reviewing materials, students struggle to manage their time effectively, lose track of what needs to be reviewed, and inevitably resort to stressful, low-retention cramming before exams.
 
 ## Proposed Solution
 
@@ -162,7 +162,7 @@ erDiagram
     }
 ```
 
-Enum values in the app: **Subject** `type` — `academic`, `hobby`, `project`; `status` — `active`, `archived`. **Topic** `status` — `not started`, `in progress`, `done`. **Block** `type` — `lecture`, `sleep`, `family`, `work`, `other`. **Session** `status` — `planned`, `completed`.
+Enum values in the app: **Subject** `type` — `academic`, `hobby`, `project`; `status` | `active`, `archived`. **Topic** `status` — `not started`, `in progress`, `done`. **Block** `type` — `lecture`, `sleep`, `family`, `work`, `other`. **Session** `status` — `planned`, `completed`.
 
 ### Spaced Repetition Workflow
 
