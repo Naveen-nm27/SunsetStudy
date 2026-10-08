@@ -1,50 +1,50 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Trash2, Pencil, Trophy } from 'lucide-react';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
 import { subjectIdOf } from '../utils/topic';
 import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
-import { useToast } from '../components/ToastProvider';
+import { useToast } from '../hooks/uiContexts';
 import { getFriendlyErrorMessage } from '../utils/apiErrors';
-import { useConfirm } from '../components/ConfirmProvider';
+import { useConfirm } from '../hooks/uiContexts';
+import { isNewlyAdded, isTopicMastered } from '../constants/spacedRepetition';
+import { useStudyData } from '../hooks/useStudyData';
+import SubjectImport from '../components/SubjectImport';
 
 export default function LibraryPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const toast = useToast();
   const confirm = useConfirm();
-  const [subjects, setSubjects] = useState([]);
-  const [topics, setTopics] = useState([]);
+  const { subjects, topics, setSubjects, setTopics, reload: load, error: dataError } = useStudyData(['subjects', 'topics']);
+  const topicsBySubject = useMemo(() => {
+    const groups = new Map();
+    for (const topic of topics) { const id = subjectIdOf(topic); if (!groups.has(id)) groups.set(id, []); groups.get(id).push(topic); }
+    return groups;
+  }, [topics]);
   const [modalType, setModalType] = useState(null);
   const [editingSubject, setEditingSubject] = useState(null);
   const [editingTopic, setEditingTopic] = useState(null);
 
-  const load = async () => {
-    const [s, t] = await Promise.all([api.get('/subjects'), api.get('/topics')]);
-    setSubjects(s.data);
-    setTopics(t.data);
-  };
-
-  useEffect(() => {
-    load().catch(console.error);
-  }, []);
 
   const delSubject = async (id) => {
-    const ok = await confirm('Delete this subject? Topics may still reference it in the database.');
+    const ok = await confirm('Delete this subject? Subjects with topics or study history must be archived instead.');
     if (!ok) return;
     try {
       await api.delete(`/subjects/${id}`);
-      await load();
+      setSubjects((prev) => prev.filter((s) => s._id !== id));
+      toast('Subject deleted', 'success');
     } catch (e) {
       toast(getFriendlyErrorMessage(e, "We couldn't delete that subject."), 'error');
     }
   };
 
   const delTopic = async (id) => {
-    const ok = await confirm('Delete this topic and unlink future sessions manually if needed?');
+    const ok = await confirm('Delete this topic? Remove its sessions first, or mark it done to preserve study history.');
     if (!ok) return;
     try {
       await api.delete(`/topics/${id}`);
-      await load();
+      setTopics((prev) => prev.filter((t) => t._id !== id));
+      toast('Topic deleted', 'success');
     } catch (e) {
       toast(getFriendlyErrorMessage(e, "We couldn't delete that topic."), 'error');
     }
@@ -85,11 +85,27 @@ export default function LibraryPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto p-6 md:p-10 space-y-10">
+      {dataError && <p role="alert">{dataError} <button onClick={() => load()} className="fun-button-secondary">Retry</button></p>}
+      <SubjectImport onImported={load} subjects={subjects} />
       {modalType && (
         <CreateEntityModal
           type={modalType}
           onClose={() => setModalType(null)}
-          onSuccess={load}
+          onSuccess={async (created) => {
+            if (modalType === 'topic' && created?._id) {
+              const withStamp = {
+                ...created,
+                createdAt: created.createdAt || new Date().toISOString(),
+              };
+              setTopics((prev) => (prev.some((t) => t._id === created._id) ? prev : [withStamp, ...prev]));
+              toast('Topic added', 'success');
+            }
+            if (modalType === 'subject' && created?._id) {
+              setSubjects((prev) => (prev.some((s) => s._id === created._id) ? prev : [created, ...prev]));
+              toast('Subject added', 'success');
+            }
+            await load();
+          }}
           userObjectId={user.id}
           subjects={subjects}
           topics={topics}
@@ -221,10 +237,15 @@ export default function LibraryPage() {
                         style={{ backgroundColor: s.color || DEFAULT_SUBJECT_COLOR }}
                       />
                       {s.name}
+                      {s.status === 'archived' && <span className="text-xs text-text-muted">(archived)</span>}
                     </span>
                   </td>
                   <td className="p-3 font-mono text-xs uppercase">{s.type}</td>
                   <td className="p-3 text-right space-x-1">
+                    <button type="button" className="text-xs px-2 py-1 border border-border-color rounded-lg" onClick={async () => {
+                      try { await api.patch(`/subjects/${s._id}`, { status: s.status === 'archived' ? 'active' : 'archived' }); await load(); }
+                      catch (err) { toast(getFriendlyErrorMessage(err, 'Could not change the archive status.'), 'error'); }
+                    }}>{s.status === 'archived' ? 'Restore' : 'Archive'}</button>
                     <button
                       type="button"
                       className="p-2 text-text-muted hover:text-sunset-orange"
@@ -263,7 +284,7 @@ export default function LibraryPage() {
             <div className="fun-card p-8 text-center text-text-muted font-serif">Add a subject first, then attach topics to it.</div>
           )}
           {subjects.map((sub) => {
-            const forSubject = topics.filter((t) => subjectIdOf(t) === sub._id);
+            const forSubject = topicsBySubject.get(sub._id) || [];
             const subColor = sub.color || DEFAULT_SUBJECT_COLOR;
             return (
               <div
@@ -300,9 +321,32 @@ export default function LibraryPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {forSubject.map((t) => (
-                        <tr key={t._id} className="border-b border-border-color last:border-0">
-                          <td className="p-3 font-serif font-bold">{t.name}</td>
+                      {forSubject.map((t) => {
+                        const mastered = isTopicMastered(t);
+                        const isNew = isNewlyAdded(t.createdAt);
+                        return (
+                        <tr
+                          key={t._id}
+                          className={`border-b border-border-color last:border-0 ${isNew ? 'topic-new-glow' : ''}`}
+                        >
+                          <td className="p-3 font-serif font-bold">
+                            <span className="inline-flex items-center gap-2 flex-wrap">
+                              {t.name}
+                              {mastered && (
+                                <span
+                                  className="inline-flex items-center gap-1 font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-lg border border-sunset-yellow/60 bg-sunset-yellow/15 text-sunset-deep dark:text-sunset-yellow"
+                                  title="Permanently mastered"
+                                >
+                                  <Trophy size={12} /> Mastered
+                                </span>
+                              )}
+                              {isNew && (
+                                <span className="inline-flex items-center font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-lg border border-sunset-orange/50 bg-sunset-orange/10 text-sunset-orange">
+                                  New
+                                </span>
+                              )}
+                            </span>
+                          </td>
                           <td className="p-3 font-mono text-xs">{t.status}</td>
                           <td className="p-3 text-right space-x-1">
                             <button
@@ -318,7 +362,8 @@ export default function LibraryPage() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}

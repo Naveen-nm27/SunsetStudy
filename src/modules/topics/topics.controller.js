@@ -27,11 +27,12 @@ export const createTopic = async (req, res) => {
     if (!subject) {
       return res.status(400).json({ message: "Invalid subject" });
     }
+    if (subject.status === 'archived') return res.status(400).json({ message: 'Restore this subject before adding topics.' });
 
     const topic = await createTopicService({ ...req.body, userObjectId: userId });
     res.status(201).json(topic);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -41,7 +42,7 @@ export const getTopicsDueToday = async (req, res) => {
     const topics = await getTopicsDueTodayService(userId);
     res.status(200).json(topics);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -50,7 +51,7 @@ export const getTopics = async (req, res) => {
     const topics = await getTopicsService(userFilter(req, req.query));
     res.status(200).json(topics);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -63,7 +64,7 @@ export const getTopicById = async (req, res) => {
     const topic = await getTopicByIdService(req.params.id);
     res.status(200).json(topic);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -77,7 +78,7 @@ export const updateTopic = async (req, res) => {
     if (!topic) return res.status(404).json(notFound().body);
     res.status(200).json(topic);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -90,6 +91,6 @@ export const deleteTopic = async (req, res) => {
     const result = await deleteTopicByIdService(req.params.id);
     res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };

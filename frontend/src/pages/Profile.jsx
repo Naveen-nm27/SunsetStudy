@@ -1,32 +1,11 @@
-import { useState, useEffect } from 'react';
-import api from '../api';
+import { useStudyData } from '../hooks/useStudyData';
 import { Book, CheckCircle, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Profile() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const [stats, setStats] = useState({ subjects: 0, topics: 0, sessions: 0 });
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const [subjRes, topicRes, sessRes] = await Promise.all([
-        api.get('/subjects'),
-        api.get('/topics'),
-        api.get('/sessions')
-      ]);
-      setStats({
-        subjects: subjRes.data.length,
-        topics: topicRes.data.length,
-        sessions: sessRes.data.filter(s => s.status === 'completed').length
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const { subjects, topics, sessions } = useStudyData(['subjects', 'topics', 'sessions']);
+  const stats = { subjects: subjects.length, topics: topics.length, sessions: sessions.filter(s => s.status === 'completed').length };
 
   return (
     <div className="p-8 md:p-16 max-w-4xl mx-auto w-full">

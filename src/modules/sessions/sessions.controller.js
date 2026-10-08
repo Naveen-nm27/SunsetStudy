@@ -1,6 +1,7 @@
 import {
   createSessionService,
   deleteSessionByIdService,
+  DuplicatePlannedSessionError,
   getSessionByIdService,
   getSessionsService,
   updateSessionByIdService,
@@ -24,8 +25,12 @@ const userFilter = (req, query = {}) => {
 const assertSessionRelations = async (body, userId) => {
   const subject = await findOwnedById(Subject, body.subjectObjectId, userId);
   if (!subject) return { status: 400, body: { message: "Invalid subject" } };
+  if (subject.status === 'archived') return { status: 400, body: { message: 'Restore this subject in Library before studying it.' } };
   const topic = await findOwnedById(Topic, body.topicObjectId, userId);
   if (!topic) return { status: 400, body: { message: "Invalid topic" } };
+  if (String(topic.subjectObjectId) !== String(body.subjectObjectId)) {
+    return { status: 400, body: { message: "Topic does not belong to the selected subject" } };
+  }
   return null;
 };
 
@@ -38,6 +43,9 @@ export const createSession = async (req, res) => {
     const session = await createSessionService({ ...req.body, userObjectId: userId });
     res.status(201).json(session);
   } catch (err) {
+    if (err instanceof DuplicatePlannedSessionError || err.status === 400 || err.code === 11000) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: err.message });
   }
 };
@@ -86,6 +94,9 @@ export const updateSession = async (req, res) => {
     if (!session) return res.status(404).json(notFound().body);
     res.status(200).json(session);
   } catch (err) {
+    if (err instanceof DuplicatePlannedSessionError || err.status === 400 || err.code === 11000) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: err.message });
   }
 };

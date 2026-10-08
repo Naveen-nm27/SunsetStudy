@@ -1,12 +1,13 @@
 import moment from 'moment';
 
 export function startOfDayMs(d) {
-  return moment(d).startOf('day').valueOf();
+  // API calendar dates retain their UTC day when shown in the user's local calendar.
+  return moment(moment.utc(d).format('YYYY-MM-DD'), 'YYYY-MM-DD').startOf('day').valueOf();
 }
 
 function plannedEndMs(session) {
   if (!session?.date || !session?.endTime) return null;
-  const day = moment(session.date).format('YYYY-MM-DD');
+  const day = moment.utc(session.date).format('YYYY-MM-DD');
   const m = moment(`${day} ${session.endTime}`, 'YYYY-MM-DD HH:mm', true);
   return m.isValid() ? m.valueOf() : null;
 }

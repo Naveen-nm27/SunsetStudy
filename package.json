@@ -15,15 +15,14 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js",
+    "test": "node --test --test-isolation=none tests/*.test.js",
+    "start": "node --watch index.js",
     "seed:demo": "node scripts/seed-demo.mjs"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.6.1",
-    "nodemon": "^3.1.14"
+    "mongoose": "^9.6.1"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

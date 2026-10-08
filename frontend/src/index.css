@@ -16,6 +16,12 @@
 }
 
 @import "tailwindcss";
+@layer components {
+  .study-input { @apply rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2 text-text-main; }
+  .study-input:focus { @apply outline-none border-sunset-orange; }
+  .pomodoro-dock { position: fixed; bottom: 1rem; right: 1rem; z-index: 60; width: min(360px, calc(100vw - 2rem)); box-shadow: 0 12px 40px #0003; }
+  .study-modal-backdrop { position: fixed; inset: 0; z-index: 70; background: #0008; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
+}
 
 /* Class-based dark mode for Tailwind `dark:` utilities (toggle on <html>) */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -323,4 +329,101 @@ html.dark .sunset-atmosphere {
 
 html.dark .lofi-grain {
   opacity: 0.06;
+}
+
+.topic-new-glow {
+  background: color-mix(in srgb, var(--sun-gold) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--sun-gold);
+}
+
+/* react-big-calendar — sunset lo-fi */
+.sunset-calendar .rbc-calendar {
+  font-family: var(--font-sans);
+  color: var(--c-text);
+  background: transparent;
+}
+
+.sunset-calendar .rbc-toolbar {
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.sunset-calendar .rbc-toolbar button {
+  border: 2px solid var(--c-border-strong);
+  background: var(--c-card);
+  color: var(--c-text);
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  box-shadow: 2px 2px 0 var(--c-shadow-deep);
+}
+
+.sunset-calendar .rbc-toolbar button:hover,
+.sunset-calendar .rbc-toolbar button.rbc-active {
+  border-color: var(--sun-ember);
+  color: var(--sun-ember);
+  background: color-mix(in srgb, var(--sun-ember) 12%, var(--c-card));
+}
+
+.sunset-calendar .rbc-header {
+  border-color: var(--c-border);
+  padding: 0.6rem 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-muted);
+}
+
+.sunset-calendar .rbc-time-view,
+.sunset-calendar .rbc-month-view,
+.sunset-calendar .rbc-time-header,
+.sunset-calendar .rbc-time-content,
+.sunset-calendar .rbc-day-slot .rbc-time-slot,
+.sunset-calendar .rbc-timeslot-group,
+.sunset-calendar .rbc-time-header-content,
+.sunset-calendar .rbc-day-bg {
+  border-color: var(--c-border);
+}
+
+.sunset-calendar .rbc-today {
+  background: color-mix(in srgb, var(--sun-gold) 10%, transparent);
+}
+
+.sunset-calendar .rbc-off-range-bg {
+  background: color-mix(in srgb, var(--c-muted) 6%, transparent);
+}
+
+.sunset-calendar .rbc-current-time-indicator {
+  background-color: var(--sun-ember);
+}
+
+.sunset-calendar .rbc-event {
+  border: none;
+  border-radius: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+}
+
+.sunset-calendar .rbc-event-block,
+.sunset-calendar .rbc-event.rbc-event-block {
+  background: linear-gradient(135deg, var(--sun-ruby), var(--sun-blaze));
+  color: #fff;
+}
+
+.sunset-calendar .rbc-event-session,
+.sunset-calendar .rbc-event.rbc-event-session {
+  background: linear-gradient(135deg, var(--sun-gold), var(--sun-flame));
+  color: var(--sun-void);
+}
+
+.sunset-calendar .rbc-event-session-done,
+.sunset-calendar .rbc-event.rbc-event-session-done {
+  background: color-mix(in srgb, var(--c-muted) 45%, var(--c-elevated));
+  color: var(--c-muted);
+  opacity: 0.85;
+}
+
+.sunset-calendar .rbc-event.rbc-selected {
+  outline: 2px solid var(--sun-gold);
 }

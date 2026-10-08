@@ -33,6 +33,8 @@ const baseBlockSchema = z.object({
 });
 
 export const createBlockSchema = baseBlockSchema.superRefine((data, ctx) => {
+  if (!data.recurring && data.days.length) ctx.addIssue({ code: 'custom', path: ['days'], message: 'Non-recurring blocks cannot specify weekdays' });
+  if (data.startTime === data.endTime) ctx.addIssue({ code: 'custom', path: ['endTime'], message: 'Start and end times must differ' });
   if (data.recurring && data.days.length === 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

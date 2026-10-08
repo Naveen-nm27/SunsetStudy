@@ -1,6 +1,5 @@
-import { createContext, useContext, useLayoutEffect, useState } from 'react';
-
-const ThemeContext = createContext();
+import { useLayoutEffect, useState } from 'react';
+import { ThemeContext } from '../hooks/uiContexts';
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
@@ -27,5 +26,3 @@ export function ThemeProvider({ children }) {
     </ThemeContext.Provider>
   );
 }
-
-export const useTheme = () => useContext(ThemeContext);

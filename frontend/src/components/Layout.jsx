@@ -1,6 +1,9 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Sun, Moon, LogOut, User, Calendar, Brain, Library, ListVideo } from 'lucide-react';
-import { useTheme } from './ThemeProvider';
+import { Sun, Moon, LogOut, User, Calendar, Brain, Library, ListVideo, CheckSquare, Timer } from 'lucide-react';
+import { useEffect } from 'react';
+import { useStudyTimer } from '../hooks/useStudyTimer';
+import { clearApiCache } from '../api';
+import { useTheme } from '../hooks/uiContexts';
 import BrandWordmark from './BrandWordmark';
 
 const navCls = ({ isActive }) =>
@@ -13,9 +16,16 @@ const navCls = ({ isActive }) =>
 export default function Layout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const { showTimer } = useStudyTimer();
+  useEffect(() => {
+    const expire = () => navigate('/login', { replace: true });
+    window.addEventListener('auth-expired', expire);
+    return () => window.removeEventListener('auth-expired', expire);
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    clearApiCache();
     localStorage.removeItem('user');
     navigate('/login');
   };
@@ -46,6 +56,8 @@ export default function Layout({ children }) {
           <NavLink to="/profile" className={navCls}>
             <User size={18} strokeWidth={2} /> Profile
           </NavLink>
+          <NavLink to="/dashboard/todos" className={navCls}><CheckSquare size={18} /> To-do</NavLink>
+          <button className="px-3 py-2 rounded-xl inline-flex items-center gap-2 text-sunset-orange" onClick={showTimer}><Timer size={18} /> Pomodoro</button>
         </nav>
 
         <div className="flex items-center gap-2 md:gap-3 shrink-0 self-end md:self-auto">

@@ -8,17 +8,21 @@ export const createBlockService = async (data) => {
 export const getBlocksService = async (filter = {}) => {
   return await Block.find(filter)
     .sort({ date: -1, startTime: -1 })
-    .populate("userObjectId");
+    .lean();
 };
 
 export const getBlockByIdService = async (id) => {
-  return await Block.findById(id).populate("userObjectId");
+  return await Block.findById(id).lean();
 };
 
 export const updateBlockByIdService = async (id, data) => {
-  return await Block.findByIdAndUpdate(id, data, { new: true }).populate(
-    "userObjectId"
-  );
+  const block = await Block.findById(id);
+  if (!block) return null;
+  Object.assign(block, data);
+  if (block.startTime === block.endTime) { const error = new Error('Start and end times must differ'); error.status = 400; throw error; }
+  if (data.recurring === false) block.days = [];
+  await block.save();
+  return block;
 };
 
 export const deleteBlockByIdService = async (id) => {

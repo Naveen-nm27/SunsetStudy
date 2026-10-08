@@ -59,9 +59,19 @@ const sessionSchema = new Schema(
       type: Date,
       default: null,
     },
+    plannedDay: { type: String },
   },
   { timestamps: true }
 );
 
+sessionSchema.pre('validate', function () {
+  this.plannedDay = this.status === 'planned' && this.date ? this.date.toISOString().slice(0, 10) : undefined;
+});
+sessionSchema.index({ topicObjectId: 1, plannedDay: 1 }, {
+  unique: true,
+  partialFilterExpression: { status: 'planned', plannedDay: { $type: 'string' } },
+});
+sessionSchema.index({ topicObjectId: 1, status: 1, completedAt: 1 });
+sessionSchema.index({ userObjectId: 1, date: -1, startTime: -1 });
 export const Session = mongoose.model("Session", sessionSchema);
 

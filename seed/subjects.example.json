@@ -1,0 +1,16 @@
+{
+  "subjects": [
+    {
+      "name": "Mathematics",
+      "type": "academic",
+      "description": "Semester one",
+      "color": "#F97316",
+      "topics": ["Algebra", { "name": "Calculus", "color": "#EC4899" }]
+    },
+    {
+      "name": "Photography",
+      "type": "hobby",
+      "topics": ["Composition", "Lighting"]
+    }
+  ]
+}

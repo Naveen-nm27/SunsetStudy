@@ -13,18 +13,26 @@ Traditional study methods often lead to the **"Illusion of Competence"** student
 
 ## Proposed Solution
 
-**SunsetStudy** introduces a systematic, automated study planner built on the proven **Ebbinghaus Forgetting Curve**. Instead of relying on manual scheduling, the app intelligently calculates your next review dates using **Spaced Repetition**. By organizing learning into Subjects, Topics, Study Blocks, and Study Sessions, SunsetStudy ensures that you review information exactly when you're about to forget it—optimizing long-term memory retention.
+**SunsetStudy** organizes subjects, topics, study sessions, and calendar commitments around **spaced repetition**. Review gaps grow as you complete scheduled study, helping you build a repeatable learning habit. The forgetting curve illustrates memory decay; it is not a measured retention score.
 
 ---
 
 ## Features
 
-- **Spaced Repetition Algorithm:** Automatically schedules the next review using intervals of **1, 3, 7, 14, 30, and 60 days** after each completed session. Topics with `nextReviewDate` on or before today appear as due.
-- **Subject & Topic Hierarchy:** Categorize learning into **Academic**, **Hobby**, or **Project** subjects; track each topic from **Not Started** → **In Progress** → **Done**.
-- **Time Management Calendar:** Schedule recurring or one-off **Study Blocks** (lectures, work, family time, etc.) separately from topic **Sessions**.
-- **Session Logging:** Plan and complete study sessions per topic; completing a session advances the topic’s review schedule and can auto-create the next planned session.
-- **Secure Authentication:** JWT-based registration and login with bcrypt-hashed passwords.
-- **Beautiful, Fun UI:** Sunset-themed aesthetics with engaging, modern, and accessible design (Memory Hub, Timeline, Library, Sessions).
+See [Study workflow and new features](FEATURES.md) for JSON imports, to-dos, Pomodoro settings, and the mastery milestone.
+
+- **Spaced reviews and mastery:** Complete initial study, then reviews after **1, 3, 7, 14, 30, and 60 days**. Early practice is logged without skipping review stages. After the final review, choose **Keep studying** for optional 60-day reviews or **Finish for now** to pause.
+- **Memory Hub:** Explore each topic's illustrative forgetting curve, completion history, overdue reviews, and suggested dates. Plan a session directly from a review suggestion.
+- **Subject library and JSON imports:** Organize **Academic**, **Hobby**, and **Project** subjects, add topics, archive subjects, and preview/import subjects with nested topics from JSON.
+- **Calendar and study sessions:** Plan sessions alongside recurring or one-off commitments. Week/day views support overnight blocks. Log completion notes and ratings; removing an incorrect completion rebuilds its topic's schedule.
+- **Persistent Pomodoro:** Focus and break timers survive navigation and browser refresh. Customize durations, rounds, and auto-start settings per account; use a session-linked or standalone timer.
+- **To-do lists:** Add tasks with priorities and optional due dates, then edit, complete, reopen, or delete them.
+- **Account protections:** JWT login, bcrypt password hashing, validated requests, account-scoped records, and safeguards against duplicate plans or deleting parents with related data.
+- **Responsive sunset theme:** Light/dark layouts, pages loaded on demand, and shared API reads to reduce repeated loading.
+
+### Coming soon
+
+📱 **An Android app is coming soon**, bringing SunsetStudy to your phone. Stay tuned for release updates.
 
 ---
 
@@ -71,6 +79,7 @@ graph TD
     B_Modules --> Mod_Topics["/topics"]
     B_Modules --> Mod_Blocks["/blocks"]
     B_Modules --> Mod_Sessions["/sessions"]
+    B_Modules --> Mod_Todos["/todos"]
 
     Backend --> B_App["app.js"]
     Backend --> B_DB["db.js"]
@@ -79,11 +88,13 @@ graph TD
     RootFiles --> Env[".env"]
     RootFiles --> Index["index.js (entry)"]
     RootFiles --> Seed["/seed & scripts/seed-demo.mjs"]
+    RootFiles --> Shared["/shared (review policy)"]
+    RootFiles --> Tests["/tests (web regressions)"]
 
     classDef folder fill:#ff9f43,stroke:#e67e22,stroke-width:2px,color:#fff;
     classDef file fill:#54a0ff,stroke:#2e86de,stroke-width:2px,color:#fff;
 
-    class Frontend,Backend,F_Src,F_Components,F_Pages,F_Utils,B_Middlewares,B_Modules,Mod_Users,Mod_Subjects,Mod_Topics,Mod_Blocks,Mod_Sessions,Seed folder;
+    class Frontend,Backend,F_Src,F_Components,F_Pages,F_Utils,B_Middlewares,B_Modules,Mod_Users,Mod_Subjects,Mod_Topics,Mod_Blocks,Mod_Sessions,Mod_Todos,Seed,Shared,Tests folder;
     class RootFiles,F_App,B_App,B_DB,Pkg,Env,Index file;
 ```
 
@@ -101,6 +112,7 @@ erDiagram
     USER ||--o{ TOPIC : owns
     USER ||--o{ BLOCK : schedules
     USER ||--o{ SESSION : logs
+    USER ||--o{ TODO : manages
 
     SUBJECT ||--o{ TOPIC : contains
     SUBJECT ||--o{ SESSION : context_for
@@ -133,6 +145,9 @@ erDiagram
         Number reviewStage
         Date nextReviewDate
         Date lastStudiedAt
+        Date masteredAt
+        String masterySource
+        Boolean continueStudying
     }
 
     BLOCK {
@@ -159,6 +174,16 @@ erDiagram
         Number rating
         String review
         String status
+        Date completedAt
+    }
+
+    TODO {
+        ObjectId id PK
+        ObjectId userObjectId FK
+        String title
+        String priority
+        Date dueDate
+        Boolean completed
     }
 ```
 
@@ -166,7 +191,7 @@ Enum values in the app: **Subject** `type` — `academic`, `hobby`, `project`; `
 
 ### Spaced Repetition Workflow
 
-When a session is created or updated with `status: "completed"`, the server advances the topic’s `reviewStage` and `nextReviewDate`, and may create the next **planned** session automatically.
+When a session is newly completed, the server rebuilds the topic review schedule from its completion history. Early practice cannot skip spaced intervals. The final scheduled review reaches mastery and pauses future suggestions until the user chooses to keep studying.
 ```mermaid
 sequenceDiagram
     participant User
@@ -183,7 +208,7 @@ sequenceDiagram
     User->>Frontend: Complete a study session
     Frontend->>Server: Create or update session as completed
     Server->>Server: advanceTopicReviewSchedule
-    Server->>Database: Update topic and next planned session
+    Server->>Database: Update topic review stage and next due date
     Database-->>Server: Success
     Server-->>Frontend: Return updated session and topic
 ```
@@ -191,16 +216,19 @@ sequenceDiagram
 
 ## API Endpoints
 
-Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the header:
+Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`, `/todos`, and user management) require the header:
 
 `Authorization: Bearer <your_jwt_token>`
 
-### Users (public)
+### Users
+
+Registration and login are public. Other user endpoints require JWT authentication and only access the current account.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/users/register` | Register a new account |
 | `POST` | `/users/login` | Authenticate and receive a JWT |
-| `GET` | `/users` | List users |
+| `GET` | `/users` | List current account |
 | `GET` | `/users/:id` | Get user by ID |
 | `PATCH` | `/users/:id` | Update user |
 | `DELETE` | `/users/:id` | Delete user |
@@ -228,6 +256,7 @@ Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the he
 | `GET` | `/subjects` | List subjects for the user |
 | `GET` | `/subjects/:id` | Get one subject |
 | `POST` | `/subjects` | Create a subject |
+| `POST` | `/subjects/import` | Previewed JSON batch import of subjects and nested topics |
 | `PATCH` | `/subjects/:id` | Update a subject |
 | `DELETE` | `/subjects/:id` | Delete a subject |
 
@@ -269,9 +298,22 @@ Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the he
 | `PATCH` | `/sessions/:id` | Update a session; marking `completed` triggers spaced repetition |
 | `DELETE` | `/sessions/:id` | Delete a session |
 
+### To-do tasks (auth required)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/todos` | List the current account's tasks |
+| `POST` | `/todos` | Create a task |
+| `PATCH` | `/todos/:id` | Edit, complete, or reopen a task |
+| `DELETE` | `/todos/:id` | Delete a task |
+
+Task fields: `title`, `priority` (`low`, `normal`, `high`), optional `dueDate`, and `completed`. Ownership is assigned from the JWT.
+
 ---
 
 ## Setup Instructions
+
+Use **Node.js 24** for the development/test commands below, plus npm and MongoDB. The web checks have been validated with Node.js 24.
 
 1. **Clone the repository**
    ```bash
@@ -285,19 +327,19 @@ Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the he
 
 3. **Install backend dependencies** (from the repo root)
    ```bash
-   npm install
+   npm ci
    ```
 
 4. **Install frontend dependencies**
    ```bash
    cd frontend
-   npm install
+   npm ci
    cd ..
    ```
 
 5. **Environment variables**
 
-   Create a `.env` file in the **project root**:
+   Copy `.env.example` to `.env` in the **project root**, then configure:
 
    ```env
    PORT=3000
@@ -312,6 +354,8 @@ Protected routes (`/subjects`, `/topics`, `/blocks`, `/sessions`) require the he
    npm run seed:demo
    ```
 
+   Use a development database for demo seeding; the seed script replaces its demo records.
+
 ---
 
 ## How to Run the Project
@@ -322,13 +366,13 @@ Use two terminals—backend and frontend.
 ```bash
 npm start
 ```
-Starts the API on `http://localhost:3000` (default `PORT` from `.env` or `3000`). Uses **nodemon** for reload on file changes.
+Starts the API on `http://localhost:3000` (default `PORT` from `.env` or `3000`). Uses Node's built-in **watch mode** to reload on file changes.
 
 **Terminal 2 — Frontend** (from `frontend/`):
 ```bash
 npm run dev
 ```
-Starts the Vite dev server (default `http://localhost:5173`). The client calls the API at `http://localhost:3000` (see `frontend/src/api.js`).
+Starts the Vite dev server (default `http://localhost:5173`). The client uses `VITE_API_URL`, defaulting to `http://localhost:3000` (see `frontend/src/api.js`).
 
 ### App routes (frontend)
 
@@ -339,8 +383,48 @@ Starts the Vite dev server (default `http://localhost:5173`). The client calls t
 | `/dashboard/memory` | Memory Hub (due topics) |
 | `/dashboard/timeline` | Timeline / calendar |
 | `/dashboard/library` | Subjects & topics library |
-| `/dashboard/sessions` | Study sessions |
+| `/dashboard/sessions` | Study sessions and Pomodoro |
+| `/dashboard/todos` | To-do list |
 | `/profile` | User profile (protected) |
+
+---
+
+## Run with Docker
+
+Docker Compose starts MongoDB, the API, and the production frontend:
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost:8080` in a browser. The API is available at `http://localhost:3000`.
+
+Before starting the stack, copy `.env.example` to `.env` and set a strong `JWT_SECRET`:
+
+```bash
+copy .env.example .env
+```
+
+The Compose setup supplies the internal MongoDB connection automatically. Data is stored in the `mongo-data` named volume. Stop the stack with `docker compose down`; use `docker compose down -v` only when you also want to delete the database volume.
+
+The frontend API URL is supplied at build time. When hosting beyond this computer, set `VITE_API_URL` in the Compose frontend build arguments to an API address reachable from the browser.
+
+## Web validation
+
+From the repository root:
+
+```bash
+npm test
+```
+
+From `frontend/`:
+
+```bash
+npm run lint
+npm run build
+```
+
+The domain and HTTP/service regressions cover review milestones, imports, timers, recurring blocks, validation, ownership, and session-history protection. Database methods in the API tests are stubbed; these checks do not seed or modify your MongoDB data.
 
 ---
 <div align="center">

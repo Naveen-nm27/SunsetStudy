@@ -16,6 +16,9 @@ export const injectAuthUserId = (req, res, next) => {
   if (!userId) {
     return res.status(401).json({ message: "Authentication required" });
   }
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ message: 'Provide a JSON object as the request body' });
+  }
   req.body.userObjectId = userId;
   next();
 };

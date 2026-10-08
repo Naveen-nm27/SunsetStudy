@@ -18,7 +18,9 @@ const userSchema = new mongoose.Schema({
     userPassword: {
         type: String,
         required: true,
+        select: false,
     },
+
 })
 
 export const User = mongoose.model("User", userSchema);

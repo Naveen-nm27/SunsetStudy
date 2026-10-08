@@ -1,2 +1,20 @@
 node_modules
 .env
+frontend/dist/
+npm-debug.log*
+.vscode/
+.web-publish/
+
+# Android development stays local while the app is in development.
+android/
+.android-tooling/
+scripts/android-env.ps1
+scripts/build-android.ps1
+scripts/setup-android.ps1
+scripts/test-android-device.ps1
+ANDROID_DEVELOPMENT.md
+GOOGLE_SIGN_IN_SETUP.md
+LOCAL_MODE.md
+MOBILE_GRAPHS.md
+src/modules/users/users.google.js
+tests/google-auth.test.js

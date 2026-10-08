@@ -1,17 +1,20 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Profile from './pages/Profile';
-import MemoryHub from './pages/MemoryHub';
-import TimelinePage from './pages/TimelinePage';
-import LibraryPage from './pages/LibraryPage';
-import SessionsPage from './pages/SessionsPage';
+import { lazy, Suspense } from 'react';
 import DustParticles from './components/DustParticles';
 import { ThemeProvider } from './components/ThemeProvider';
 import Layout from './components/Layout';
 import { ToastProvider } from './components/ToastProvider';
 import { ConfirmProvider } from './components/ConfirmProvider';
+import StudyTimerProvider from './components/StudyTimerProvider';
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Profile = lazy(() => import('./pages/Profile'));
+const MemoryHub = lazy(() => import('./pages/MemoryHub'));
+const TimelinePage = lazy(() => import('./pages/TimelinePage'));
+const LibraryPage = lazy(() => import('./pages/LibraryPage'));
+const SessionsPage = lazy(() => import('./pages/SessionsPage'));
+const TodosPage = lazy(() => import('./pages/TodosPage'));
 
 function ProtectedLayout() {
   const token = localStorage.getItem('token');
@@ -19,9 +22,9 @@ function ProtectedLayout() {
     return <Navigate to="/login" replace />;
   }
   return (
-    <Layout>
+    <StudyTimerProvider><Layout>
       <Outlet />
-    </Layout>
+    </Layout></StudyTimerProvider>
   );
 }
 
@@ -33,7 +36,7 @@ function App() {
           <Router>
             <DustParticles />
             <div className="relative z-10 w-full min-h-screen flex flex-col">
-              <Routes>
+              <Suspense fallback={<p role="status" className="p-10 text-center text-text-muted">Loading your study space…</p>}><Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -44,10 +47,11 @@ function App() {
                     <Route path="timeline" element={<TimelinePage />} />
                     <Route path="library" element={<LibraryPage />} />
                     <Route path="sessions" element={<SessionsPage />} />
+                    <Route path="todos" element={<TodosPage />} />
                   </Route>
                   <Route path="profile" element={<Profile />} />
                 </Route>
-              </Routes>
+              </Routes></Suspense>
             </div>
           </Router>
         </ConfirmProvider>

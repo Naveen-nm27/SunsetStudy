@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import { getFriendlyErrorMessage } from '../utils/apiErrors';
 import { ArrowLeft, Moon, Sun } from 'lucide-react';
-import { useTheme } from '../components/ThemeProvider';
+import { useTheme } from '../hooks/uiContexts';
 import BrandWordmark from '../components/BrandWordmark';
 
 export default function Register() {

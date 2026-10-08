@@ -1,86 +1,82 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import moment from 'moment';
-import { Clock, CheckCircle, Plus, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { CheckCircle, Plus, Trash2, CalendarDays, Sun } from 'lucide-react';
+import { motion } from 'framer-motion';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
-import { getSubjectColor } from '../utils/subjectColors';
+import { useToast } from '../hooks/uiContexts';
+import { useConfirm } from '../hooks/uiContexts';
+import { getFriendlyErrorMessage } from '../utils/apiErrors';
+import { buildCalendarEvents, calendarRangeForView } from '../utils/calendarEvents';
+import { useStudyData } from '../hooks/useStudyData';
+import SessionStudyTimer from '../components/SessionStudyTimer';
+
+const localizer = momentLocalizer(moment);
 
 export default function TimelinePage() {
-  const [events, setEvents] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [topics, setTopics] = useState([]);
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { sessions, blocks, subjects, topics, setSessions, setBlocks, reload: fetchDashboardData, error: dataError } = useStudyData(['sessions', 'blocks', 'subjects', 'topics']);
   const [createModalType, setCreateModalType] = useState(null);
+  const [view, setView] = useState(Views.WEEK);
+  const [date, setDate] = useState(new Date());
+  const [selected, setSelected] = useState(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      const [blocksRes, sessionsRes, subjectsRes, topicsRes] = await Promise.all([
-        api.get('/blocks'),
-        api.get('/sessions'),
-        api.get('/subjects'),
-        api.get('/topics'),
-      ]);
+  const range = useMemo(() => calendarRangeForView(date, view === Views.DAY ? 'day' : 'week'), [date, view]);
 
-      const today = moment().startOf('day');
-      setSubjects(subjectsRes.data);
-      setTopics(topicsRes.data);
-
-      const blockEvents = blocksRes.data.map((b) => ({
-        id: b._id,
-        title: b.title,
-        startTime: b.startTime,
-        endTime: b.endTime,
-        type: 'block',
-        blockType: b.type,
-        resource: b,
-      }));
-
-      const sessionEvents = sessionsRes.data
-        .filter((s) => moment(s.date).startOf('day').isSame(today))
-        .map((s) => ({
-          id: s._id,
-          title: `Study: ${s.topicObjectId?.name || 'Topic'}`,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          type: 'session',
-          status: s.status,
-          subjectId: s.topicObjectId?.subjectObjectId?._id || s.topicObjectId?.subjectObjectId || null,
-          resource: s,
-        }));
-
-      const allEvents = [...blockEvents, ...sessionEvents].sort((a, b) => a.startTime.localeCompare(b.startTime));
-      setEvents(allEvents);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const events = useMemo(
+    () => buildCalendarEvents(sessions, blocks, range.start, range.end),
+    [sessions, blocks, range.start, range.end]
+  );
 
   const markSessionComplete = async (id) => {
     try {
       await api.patch(`/sessions/${id}`, { status: 'completed' });
-      fetchDashboardData();
+      setSessions((prev) => prev.map((s) => (s._id === id ? { ...s, status: 'completed' } : s)));
+      setSelected((prev) =>
+        prev?.type === 'session' && prev.resource?._id === id
+          ? { ...prev, status: 'completed', resource: { ...prev.resource, status: 'completed' } }
+          : prev
+      );
+      toast('Session marked as completed', 'success');
     } catch (err) {
-      console.error(err);
+      toast(getFriendlyErrorMessage(err, "We couldn't complete that session."), 'error');
     }
   };
 
   const deleteEntity = async (type, id) => {
+    const ok = await confirm(type === 'block' ? 'Delete this time block?' : 'Delete this session?');
+    if (!ok) return;
     try {
-      if (type === 'block') await api.delete(`/blocks/${id}`);
-      if (type === 'session') await api.delete(`/sessions/${id}`);
-      fetchDashboardData();
+      if (type === 'block') {
+        await api.delete(`/blocks/${id}`);
+        setBlocks((prev) => prev.filter((b) => b._id !== id));
+      } else {
+        await api.delete(`/sessions/${id}`);
+        setSessions((prev) => prev.filter((s) => s._id !== id));
+      }
+      setSelected(null);
+      toast(type === 'block' ? 'Block deleted' : 'Session deleted', 'success');
     } catch (err) {
-      console.error(err);
+      toast(getFriendlyErrorMessage(err, "We couldn't delete that."), 'error');
     }
+  };
+
+  const eventPropGetter = (event) => {
+    if (event.type === 'block') return { className: 'rbc-event-block' };
+    if (event.status === 'completed' || event.resource?.status === 'completed') {
+      return { className: 'rbc-event-session-done' };
+    }
+    return { className: 'rbc-event-session' };
   };
 
   return (
     <div className="w-full relative">
+      {dataError && <p role="alert">{dataError} <button onClick={() => fetchDashboardData()} className="fun-button-secondary">Retry</button></p>}
       {createModalType && (
         <CreateEntityModal
           type={createModalType}
@@ -92,12 +88,12 @@ export default function TimelinePage() {
         />
       )}
 
-      <main className="w-full p-6 md:p-12 overflow-y-auto max-w-5xl mx-auto">
-        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <main className="w-full p-6 md:p-12 overflow-y-auto max-w-6xl mx-auto">
+        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h2 className="text-4xl font-serif font-bold mb-2">Today&apos;s timeline</h2>
             <p className="font-mono text-base text-text-muted uppercase tracking-widest">
-              {moment().format('dddd, MMMM Do YYYY')}
+              {moment(date).format('dddd, MMMM Do YYYY')}
             </p>
           </div>
 
@@ -133,107 +129,99 @@ export default function TimelinePage() {
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 w-full relative">
-          <div className="absolute left-6 top-4 bottom-4 w-1 rounded-full z-0 bg-gradient-to-b from-sunset-orange/25 via-sunset-purple/30 to-sunset-deep/40" />
-
-          <AnimatePresence>
-            {events.length === 0 ? (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-serif text-base leading-relaxed italic opacity-70 ml-16 max-w-xl">
-                Your schedule is clear for today. Add blocks or sessions from the buttons above, or use Library for
-                bulk planning.
-              </motion.p>
-            ) : (
-              events.map((ev, index) => {
-                const isCompleted = ev.status === 'completed';
-                const isBlock = ev.type === 'block';
-
-                let cardColor = 'fun-card';
-                let dotColor = 'bg-sunset-yellow';
-
-                // Resolve subject colour for session events
-                const sessionSubjectId = !isBlock
-                  ? (ev.resource?.topicObjectId?.subjectObjectId?._id ||
-                     ev.resource?.topicObjectId?.subjectObjectId ||
-                     null)
-                  : null;
-                const sessionSubjectColor = !isBlock
-                  ? getSubjectColor(sessionSubjectId, subjects)
-                  : null;
-
-                if (isBlock) {
-                  dotColor = 'bg-text-muted/60';
-                  cardColor = 'fun-card bg-bg-base border-border-color/50 border-dashed opacity-85 text-text-muted';
-                } else if (isCompleted) {
-                  cardColor = 'fun-card opacity-50 bg-bg-base';
-                  dotColor = 'bg-text-muted';
-                } else {
-                  dotColor = 'bg-sunset-orange';
-                }
-
-                return (
-                  <motion.div
-                    key={ev.id + index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="relative pl-16 z-10"
-                  >
-                    <div className={`absolute left-[22px] top-6 w-4 h-4 rounded-full border-2 border-bg-base ${dotColor} z-10`} />
-
-                    <div
-                      className={`${cardColor} p-6 flex flex-col md:flex-row md:items-center justify-between gap-4`}
-                      style={!isBlock && sessionSubjectColor ? {
-                        borderLeftColor: sessionSubjectColor,
-                        borderLeftWidth: '4px',
-                      } : undefined}
-                    >
-                      <div className="flex-1">
-                        <p className="font-mono text-sm font-bold opacity-80 mb-2 flex items-center gap-2">
-                          <Clock size={14} /> {moment(ev.startTime, 'HH:mm').format('h:mm A')} —{' '}
-                          {moment(ev.endTime, 'HH:mm').format('h:mm A')}
-                        </p>
-                        <h3 className={`text-xl font-serif font-bold ${isCompleted ? 'line-through opacity-70' : ''} ${isBlock ? 'text-text-muted opacity-90' : 'text-text-main'}`}>
-                          {ev.title}
-                        </h3>
-                        {isBlock && (
-                          <p className="font-mono text-xs uppercase mt-2 opacity-60">Fixed commitment • {ev.blockType}</p>
-                        )}
-                        {!isBlock && <p className="font-mono text-xs uppercase mt-2 opacity-60">Study session</p>}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {!isBlock && !isCompleted && (
-                          <button
-                            type="button"
-                            onClick={() => markSessionComplete(ev.id)}
-                            className="fun-button flex items-center justify-center gap-2 text-sm whitespace-nowrap"
-                          >
-                            <CheckCircle size={16} /> Complete
-                          </button>
-                        )}
-
-                        {!isBlock && isCompleted && (
-                          <div className="font-mono text-xs uppercase font-bold opacity-60 flex items-center gap-2">
-                            <CheckCircle size={16} /> Done
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => deleteEntity(ev.type, ev.id)}
-                          className="p-3 text-sunset-pink hover:text-sunset-pink/70 transition-colors opacity-50 hover:opacity-100"
-                          title="Delete"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </AnimatePresence>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setView(Views.WEEK)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm font-sans font-medium ${
+              view === Views.WEEK
+                ? 'border-sunset-orange bg-sunset-orange/15 text-sunset-orange'
+                : 'border-border-color text-text-muted hover:border-sunset-orange/50'
+            }`}
+          >
+            <CalendarDays size={16} /> Week
+          </button>
+          <button
+            type="button"
+            onClick={() => setView(Views.DAY)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm font-sans font-medium ${
+              view === Views.DAY
+                ? 'border-sunset-orange bg-sunset-orange/15 text-sunset-orange'
+                : 'border-border-color text-text-muted hover:border-sunset-orange/50'
+            }`}
+          >
+            <Sun size={16} /> Day
+          </button>
+          <div className="ml-auto flex flex-wrap gap-3 font-mono text-[10px] uppercase text-text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-sunset-pink" /> Blocks
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-sunset-yellow" /> Planned
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-text-muted/50" /> Completed
+            </span>
+          </div>
         </div>
+
+        <div className="fun-card p-3 md:p-4 sunset-calendar overflow-hidden">
+          <Calendar
+            localizer={localizer}
+            events={events}
+            view={view}
+            date={date}
+            onView={setView}
+            onNavigate={setDate}
+            views={[Views.WEEK, Views.DAY]}
+            defaultView={Views.WEEK}
+            step={30}
+            timeslots={2}
+            style={{ minHeight: 640 }}
+            eventPropGetter={eventPropGetter}
+            onSelectEvent={setSelected}
+            popup
+            toolbar
+          />
+        </div>
+
+        {selected && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fun-card mt-6 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+          >
+            <div>
+              <p className="font-mono text-xs uppercase text-text-muted mb-1">
+                {selected.type === 'block' ? `Block · ${selected.resource?.type || ''}` : `Session · ${selected.resource?.status || ''}`}
+              </p>
+              <h3 className="text-xl font-serif font-bold">{selected.title}</h3>
+              <p className="font-mono text-xs text-text-muted mt-1">
+                {moment(selected.start).format('ddd D MMM, h:mm A')} – {moment(selected.end).format('h:mm A')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {selected.type === 'session' && <SessionStudyTimer session={selected.resource} />}
+              {selected.type === 'session' && selected.resource?.status === 'planned' && (
+                <button
+                  type="button"
+                  onClick={() => markSessionComplete(selected.resource._id)}
+                  className="fun-button flex items-center gap-2 text-sm"
+                >
+                  <CheckCircle size={16} /> Complete
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => deleteEntity(selected.type, selected.resource._id)}
+                className="p-3 text-sunset-pink hover:text-sunset-pink/70 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          </motion.div>
+        )}
       </main>
     </div>
   );

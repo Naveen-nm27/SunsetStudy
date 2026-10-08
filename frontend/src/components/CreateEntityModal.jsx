@@ -1,65 +1,74 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import api from '../api';
 import { getFriendlyErrorMessage } from '../utils/apiErrors';
+import { useToast } from '../hooks/uiContexts';
 import moment from 'moment';
 import { subjectIdOf } from '../utils/topic';
 import { SUBJECT_COLOR_PALETTE, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
+import { isTopicMastered } from '../constants/spacedRepetition';
 
 export default function CreateEntityModal({ type, onClose, onSuccess, userObjectId, subjects, topics, sessionPrefill }) {
-  const [formData, setFormData] = useState({});
-  const [error, setError] = useState('');
-  
-  // Initialize form data based on type
-  useEffect(() => {
+  const toast = useToast();
+  const availableSubjects = subjects.filter(subject => subject.status !== 'archived');
+  const availableTopics = topics.filter(topic => !isTopicMastered(topic) || topic.continueStudying);
+  const [formData, setFormData] = useState(() => {
     if (type === 'subject') {
-      setFormData({ name: '', type: 'academic', color: DEFAULT_SUBJECT_COLOR, userObjectId });
+      return { name: '', type: 'academic', color: DEFAULT_SUBJECT_COLOR, userObjectId };
     } else if (type === 'topic') {
-      setFormData({ name: '', subjectObjectId: subjects[0]?._id || '', color: '', userObjectId });
+      return { name: '', subjectObjectId: availableSubjects[0]?._id || '', color: '', userObjectId };
     } else if (type === 'session') {
       const pf = sessionPrefill || {};
-      const defaultSubject = pf.subjectObjectId || subjects[0]?._id || '';
-      const related = topics.filter((t) => subjectIdOf(t) === defaultSubject);
+      const defaultSubject = pf.subjectObjectId || availableSubjects[0]?._id || '';
+      const related = availableTopics.filter((t) => subjectIdOf(t) === defaultSubject);
       const defaultTopic =
         (pf.topicObjectId && related.some((t) => t._id === pf.topicObjectId) ? pf.topicObjectId : null) ||
         related[0]?._id ||
-        topics[0]?._id ||
         '';
-      setFormData({
+      return {
         subjectObjectId: defaultSubject,
         topicObjectId: defaultTopic,
         date: pf.date || moment().format('YYYY-MM-DD'),
         startTime: pf.startTime || '09:00',
         endTime: pf.endTime || '10:00',
         userObjectId,
-      });
+      };
     } else if (type === 'block') {
-      setFormData({ 
+      return {
         title: '', 
         type: 'lecture', 
         date: moment().format('YYYY-MM-DD'), 
         startTime: '09:00', 
         endTime: '10:00', 
         userObjectId 
-      });
+      };
     }
-  }, [type, userObjectId, subjects, topics, sessionPrefill]);
+    return {};
+  });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true); setError('');
     try {
-      if (type === 'subject') await api.post('/subjects', formData);
-      if (type === 'topic') await api.post('/topics', formData);
-      if (type === 'session') await api.post('/sessions', formData);
-      if (type === 'block') await api.post('/blocks', formData);
-      
-      onSuccess();
+      const path =
+        type === 'subject' ? '/subjects' :
+        type === 'topic' ? '/topics' :
+        type === 'session' ? '/sessions' :
+        '/blocks';
+      const res = await api.post(path, formData);
+      try { await onSuccess?.(res.data); } catch { toast('Saved. Refresh this page to see the latest data.', 'info'); }
       onClose();
     } catch (err) {
       console.error(err);
-      setError(getFriendlyErrorMessage(err, "We couldn't save that. Please check the form and try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't save that. Please check the form and try again.");
+      setError(message);
+      toast(message, 'error');
     }
+    finally { setSaving(false); }
   };
 
   const handleSubjectChange = (e) => {
@@ -67,7 +76,7 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
     setFormData(prev => ({ ...prev, subjectObjectId: subId }));
     // Auto select first topic of this subject
     if (type === 'session') {
-      const relatedTopics = topics.filter((t) => subjectIdOf(t) === subId);
+      const relatedTopics = availableTopics.filter((t) => subjectIdOf(t) === subId);
       if (relatedTopics.length > 0) {
         setFormData(prev => ({ ...prev, topicObjectId: relatedTopics[0]._id }));
       } else {
@@ -145,7 +154,8 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
               <div>
                 <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Subject</label>
                 <select required className="w-full rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 focus:border-sunset-orange outline-none font-sans text-text-main tracking-tight" value={formData.subjectObjectId || ''} onChange={e => setFormData({...formData, subjectObjectId: e.target.value})}>
-                  {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                  <option value="" disabled>Select a subject</option>
+                  {availableSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
@@ -177,14 +187,15 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
               <div>
                 <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Subject</label>
                 <select required className="w-full rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 focus:border-sunset-orange outline-none font-sans text-text-main tracking-tight" value={formData.subjectObjectId || ''} onChange={handleSubjectChange}>
-                  {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                  <option value="" disabled>Select a subject</option>
+                  {availableSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block font-sans text-sm font-medium text-text-muted mb-1.5 tracking-tight">Topic</label>
-                {topics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0 ? (
+                {availableTopics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0 ? (
                   <p className="text-sm text-text-muted rounded-xl border-2 border-border-color bg-bg-elevated px-3 py-2.5 leading-relaxed">
-                    No topics under this subject yet. Add a topic in the library and pick this subject, then create a session.
+                    No topics available to study. Add a topic in the library, or choose Keep studying for a mastered topic in Memory.
                   </p>
                 ) : (
                   <select
@@ -193,7 +204,7 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
                     value={formData.topicObjectId || ''}
                     onChange={(e) => setFormData({ ...formData, topicObjectId: e.target.value })}
                   >
-                    {topics
+                    {availableTopics
                       .filter((t) => subjectIdOf(t) === formData.subjectObjectId)
                       .map((t) => (
                         <option key={t._id} value={t._id}>
@@ -256,10 +267,10 @@ export default function CreateEntityModal({ type, onClose, onSuccess, userObject
 
           <button
             type="submit"
-            disabled={type === 'session' && topics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0}
+            disabled={saving || (type === 'session' && availableTopics.filter((t) => subjectIdOf(t) === formData.subjectObjectId).length === 0)}
             className="fun-button w-full mt-6 text-base disabled:opacity-45 disabled:pointer-events-none"
           >
-            Save {type}
+            {saving ? 'Saving…' : `Save ${type}`}
           </button>
         </form>
       </motion.div>

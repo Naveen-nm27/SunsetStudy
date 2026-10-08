@@ -13,6 +13,7 @@ export const createTopicSchema = z.object({
 export const updateTopicSchema = createTopicSchema
   .omit({ subjectObjectId: true, userObjectId: true })
   .partial()
+  .extend({ continueStudying: z.boolean().optional() })
   .refine((data) => Object.keys(data).length > 0, {
     message: "at least one field is required",
   });

@@ -1,16 +1,10 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ToastCtx } from '../hooks/uiContexts';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
 /* ─── Context ─────────────────────────────────────────────────── */
-const ToastCtx = createContext(null);
-
-export function useToast() {
-  const ctx = useContext(ToastCtx);
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
-  return ctx;
-}
 
 /* ─── Individual toast styles ─────────────────────────────────── */
 const VARIANTS = {
@@ -89,6 +83,10 @@ let _nextId = 1;
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef({});
+  useEffect(() => {
+    const active = timers.current;
+    return () => Object.values(active).forEach(clearTimeout);
+  }, []);
 
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -99,7 +97,7 @@ export function ToastProvider({ children }) {
   const toast = useCallback(
     (message, type = 'info') => {
       const id = _nextId++;
-      setToasts((prev) => [...prev, { id, message, type }]);
+      setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
       // Safety fallback in case animation callback doesn't fire
       timers.current[id] = setTimeout(() => dismiss(id), DURATION + 500);
     },
@@ -111,7 +109,7 @@ export function ToastProvider({ children }) {
       {children}
       {createPortal(
         <div
-          className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 items-end pointer-events-none"
+          className="fixed top-6 right-6 z-[9999] flex flex-col gap-3 items-end pointer-events-none"
           aria-live="polite"
           aria-label="Notifications"
         >

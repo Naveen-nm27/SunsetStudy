@@ -8,8 +8,10 @@ import {
 } from "./subjects.controller.js";
 import { createSubjectSchema, updateSubjectSchema, validate } from "./subjects.validation.js";
 import { injectAuthUserId } from "../../utils/authUser.js";
+import { importSubjects, validateSubjectImport } from './subjects.import.js';
 
 const router = express.Router();
+router.post('/import', validateSubjectImport, importSubjects);
 
 router.post("/", injectAuthUserId, validate(createSubjectSchema), createSubject);
 router.get("/", getSubjects);

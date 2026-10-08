@@ -4,12 +4,14 @@ import { z } from "zod";
 export const createUserSchema = z.object({
   userName: z
     .string()
+    .trim()
     .min(3, "Username must be at least 3 characters.")
     .max(20, "Username must be 20 characters or fewer.")
     .trim(),
 
   userEmail: z
     .string()
+    .trim().toLowerCase()
     .email("Please enter a valid email address."),
 
   userPassword: z
@@ -19,6 +21,11 @@ export const createUserSchema = z.object({
     .regex(/[0-9]/, "Password needs at least one number.")
     .regex(/[^a-zA-Z0-9]/, "Password needs at least one special character."),
 });
+export const loginUserSchema = z.object({
+  userEmail: z.string().trim().toLowerCase().email('Please enter a valid email address.'),
+  userPassword: z.string().min(1, 'Password is required.'),
+});
+
 
 // Generic middleware factory to validate any schema
 export const validate = (schema) => (req, res, next) => {

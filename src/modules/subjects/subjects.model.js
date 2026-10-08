@@ -29,5 +29,6 @@ const subjectSchema = new Schema(
   { timestamps: true }
 );
 
+subjectSchema.index({ userObjectId: 1, createdAt: -1 });
 export const Subject = mongoose.model("Subject", subjectSchema);
 

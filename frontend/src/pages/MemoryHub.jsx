@@ -1,29 +1,29 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, Link, useLocation } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import moment from 'moment';
-import { Brain, ChevronRight, ExternalLink, CalendarDays, Pencil, Check, X } from 'lucide-react';
-import api from '../api';
+import { Brain, ChevronRight, ExternalLink, CalendarDays, Pencil, Check, X, Trophy } from 'lucide-react';
 import CreateEntityModal from '../components/CreateEntityModal';
 import ForgettingCurveChart from '../components/ForgettingCurveChart';
 import ReviewScheduleList from '../components/ReviewScheduleList';
-import { REVIEW_INTERVAL_DAYS } from '../constants/spacedRepetition';
+import { REVIEW_INTERVAL_DAYS, isTopicMastered } from '../constants/spacedRepetition';
 import { subjectIdOf, topicIdFromSession } from '../utils/topic';
 import { sessionCompletionMs } from '../utils/sessionTimeline';
 import { getSubjectColor } from '../utils/subjectColors';
+import { useStudyData } from '../hooks/useStudyData';
+import MasteryChoice from '../components/MasteryChoice';
 
 export default function MemoryHub() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const CALENDAR_KEY = `sunsetStudy_calendarUrl_${user.id || 'guest'}`;
   const [calendarUrl, setCalendarUrl] = useState(() => localStorage.getItem(CALENDAR_KEY) || '');
   const [editingCalendar, setEditingCalendar] = useState(false);
   const [calendarDraft, setCalendarDraft] = useState('');
-  const [topics, setTopics] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [selectedTopicId, setSelectedTopicId] = useState('');
-  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const { topics, subjects, sessions, reload: load, error: dataError } = useStudyData(['topics', 'subjects', 'sessions']);
+  const requestedTopic = searchParams.get('topic');
+  const selectedTopicId = topics.some(t => t._id === requestedTopic) ? requestedTopic : topics[0]?._id || '';
+  const requestedSession = searchParams.get('session');
+  const selectedSessionId = sessions.some(s => s._id === requestedSession && topicIdFromSession(s) === selectedTopicId) ? requestedSession : '';
   const [sessionPrefill, setSessionPrefill] = useState(null);
 
   const saveCalendarUrl = (url) => {
@@ -39,41 +39,6 @@ export default function MemoryHub() {
     setEditingCalendar(false);
   };
 
-  const load = async () => {
-    try {
-      const [tRes, sRes, sessRes] = await Promise.all([
-        api.get('/topics'),
-        api.get('/subjects'),
-        api.get('/sessions'),
-      ]);
-      setTopics(tRes.data);
-      setSubjects(sRes.data);
-      setSessions(sessRes.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const onFocus = () => load();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, []);
-
-  useEffect(() => {
-    if (!topics.length) return;
-    const tid = searchParams.get('topic');
-    const sid = searchParams.get('session') || '';
-    const resolvedTopic = tid && topics.some((t) => t._id === tid) ? tid : topics[0]._id;
-    setSelectedTopicId(resolvedTopic);
-    const ts = sessions.filter((s) => topicIdFromSession(s) === resolvedTopic);
-    const sessionOk = sid && ts.some((s) => s._id === sid);
-    setSelectedSessionId(sessionOk ? sid : '');
-  }, [searchParams, topics, sessions]);
 
   const subjectNameById = useMemo(() => {
     const m = new Map();
@@ -82,6 +47,7 @@ export default function MemoryHub() {
   }, [subjects]);
 
   const selectedTopic = topics.find((t) => t._id === selectedTopicId) || null;
+  const mastered = isTopicMastered(selectedTopic);
 
   const topicSessions = useMemo(() => {
     if (!selectedTopicId) return [];
@@ -96,13 +62,10 @@ export default function MemoryHub() {
   };
 
   const onTopicChange = (tid) => {
-    setSelectedTopicId(tid);
-    setSelectedSessionId('');
     syncUrl(tid, '');
   };
 
   const onSessionChange = (sid) => {
-    setSelectedSessionId(sid);
     syncUrl(selectedTopicId, sid);
   };
 
@@ -123,6 +86,8 @@ export default function MemoryHub() {
 
   return (
     <div className="w-full max-w-6xl mx-auto p-6 md:p-10">
+      {dataError && <p role="alert">{dataError} <button onClick={() => load()} className="fun-button-secondary">Retry</button></p>}
+      {mastered && <MasteryChoice topic={selectedTopic} onChanged={load} />}
       {sessionPrefill && (
         <CreateEntityModal
           type="session"
@@ -169,7 +134,6 @@ export default function MemoryHub() {
               {topics.length === 0 && <option value="">No topics yet</option>}
               {topics.map((t) => {
                 const sid = subjectIdOf(t);
-                const subColor = getSubjectColor(sid, subjects);
                 return (
                   <option key={t._id} value={t._id}>
                     {subjectNameById.get(sid) || 'Subject'} — {t.name}
@@ -211,7 +175,7 @@ export default function MemoryHub() {
                 const when =
                   s.status === 'completed' && sessionCompletionMs(s)
                     ? moment(sessionCompletionMs(s)).format('MMM D, h:mm A')
-                    : moment(s.date).format('MMM D');
+                    : moment.utc(s.date).format('MMM D');
                 return (
                   <option key={s._id} value={s._id}>
                     {when} · {s.status} · {s.startTime}–{s.endTime}
@@ -225,7 +189,14 @@ export default function MemoryHub() {
             <dl className="grid grid-cols-2 gap-y-5 gap-x-4 font-mono text-sm text-text-muted border-t border-border-color pt-6">
               <div className="flex flex-col gap-1.5">
                 <dt className="uppercase text-xs font-bold tracking-widest">Status</dt>
-                <dd className="text-text-main font-bold normal-case text-base bg-bg-elevated px-3 py-1.5 rounded-lg border border-border-color w-fit">{selectedTopic.status}</dd>
+                <dd className="text-text-main font-bold normal-case text-base bg-bg-elevated px-3 py-1.5 rounded-lg border border-border-color w-fit inline-flex items-center gap-2">
+                  {selectedTopic.status}
+                  {mastered && (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-sunset-yellow">
+                      <Trophy size={12} /> Mastered
+                    </span>
+                  )}
+                </dd>
               </div>
               <div className="flex flex-col gap-1.5">
                 <dt className="uppercase text-xs font-bold tracking-widest">Stage</dt>
@@ -233,13 +204,15 @@ export default function MemoryHub() {
               </div>
               <div className="flex flex-col gap-1.5 col-span-2">
                 <dt className="uppercase text-xs font-bold tracking-widest">Next interval</dt>
-                <dd className="text-sunset-orange font-bold text-base px-1">{nextInterval}d after completion</dd>
+                <dd className="text-sunset-orange font-bold text-base px-1">
+                  {mastered ? (selectedTopic.continueStudying ? 'Optional review every 60 days' : 'Reviews paused') : `${nextInterval}d after completion`}
+                </dd>
               </div>
               <div className="flex flex-col gap-1.5 col-span-2 bg-bg-elevated p-4 rounded-xl border border-border-color shadow-sm">
                 <dt className="uppercase text-xs font-bold tracking-widest text-sunset-pink">Next review</dt>
                 <dd className="text-text-main font-bold normal-case text-lg">
                   {selectedTopic.nextReviewDate
-                    ? moment(selectedTopic.nextReviewDate).format('dddd, MMM D YYYY')
+                    ? moment.utc(selectedTopic.nextReviewDate).format('dddd, MMM D YYYY')
                     : '—'}
                 </dd>
               </div>

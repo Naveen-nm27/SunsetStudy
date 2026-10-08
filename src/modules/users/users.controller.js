@@ -6,8 +6,10 @@ import jwt from "jsonwebtoken";
 export const createUser = async (req,res) => {
     try{
         const user = await createUserService(req.body);
-        res.status(201).json(user)
+        const { userPassword: _password, ...safeUser } = user.toObject();
+        res.status(201).json(safeUser)
     } catch (err){
+        if (err.code === 11000) return res.status(409).json({ message: 'That username or email is already registered.' });
         res.status(500).json({ message: "We couldn't create your account. Please try again." });
     }
 };
@@ -15,13 +17,14 @@ export const createUser = async (req,res) => {
 export const loginUser = async (req, res) => {
     try {
         const { userEmail, userPassword } = req.body;
-        const user = await User.findOne({ userEmail });
+        const user = await User.findOne({ userEmail: String(userEmail ?? '').trim().toLowerCase() }).select('+userPassword');
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
         const isMatch = await bcrypt.compare(userPassword, user.userPassword);
         if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+        if (!process.env.JWT_SECRET) return res.status(503).json({ message: 'Authentication is not configured' });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
         res.status(200).json({ token, user: { id: user._id, userName: user.userName, userEmail: user.userEmail } });
     } catch (err) {
         res.status(500).json({ message: "We couldn't sign you in. Please try again in a moment." });
@@ -30,7 +33,7 @@ export const loginUser = async (req, res) => {
 
 export const getUsers = async (req,res) => {
     try{
-        const Users = await getUserService();
+        const Users = await getUserService(req.user.id);
         res.status(200).json(Users);
     } catch(err){
         res.status(500).json({message: err.message});
@@ -51,7 +54,7 @@ export const deleteUser = async (req,res) => {
         const deleteUser = await deleteUserByIdService(req.params.id);
         res.status(200).json(deleteUser);
     } catch(err){
-        res.status(500).json({message:err.message});
+        res.status(err.status || 500).json({message:err.message});
     }
 }
 
@@ -60,6 +63,6 @@ export const updateUser = async(req,res) => {
         const updateUser = await updateUserByIdService(req.params.id,req.body);
         res.status(200).json(updateUser);
     } catch(err){
-        res.status(500).json({message:err.message});
+        res.status(err.status || 500).json({message:err.message});
     }
 }

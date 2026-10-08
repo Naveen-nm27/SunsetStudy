@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function DustParticles() {
-  const [particles, setParticles] = useState([]);
-
-  useEffect(() => {
+  const [particles] = useState(() => {
     // Generate 30 random particles
     const newParticles = Array.from({ length: 35 }).map((_, i) => ({
       id: i,
@@ -13,8 +11,8 @@ export default function DustParticles() {
       duration: `${Math.random() * 12 + 8}s`,
       delay: `${Math.random() * 8}s`,
     }));
-    setParticles(newParticles);
-  }, []);
+    return newParticles;
+  });
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 opacity-55 dark:opacity-100 transition-opacity duration-500">

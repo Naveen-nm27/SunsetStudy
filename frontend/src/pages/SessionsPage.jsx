@@ -1,41 +1,26 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Plus, Trash2, Brain } from 'lucide-react';
 import api from '../api';
 import CreateEntityModal from '../components/CreateEntityModal';
 import SessionStudyTimer from '../components/SessionStudyTimer';
-import { topicIdFromSession, subjectIdOf } from '../utils/topic';
+import { topicIdFromSession } from '../utils/topic';
 import { getSubjectColor } from '../utils/subjectColors';
-import { useToast } from '../components/ToastProvider';
+import { useToast } from '../hooks/uiContexts';
 import { getFriendlyErrorMessage } from '../utils/apiErrors';
-import { useConfirm } from '../components/ConfirmProvider';
+import { useConfirm } from '../hooks/uiContexts';
+import { useStudyData } from '../hooks/useStudyData';
 
 export default function SessionsPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const toast = useToast();
   const confirm = useConfirm();
-  const [sessions, setSessions] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [topics, setTopics] = useState([]);
+  const { sessions, subjects, topics, setSessions, reload: load, error: dataError } = useStudyData(['sessions', 'subjects', 'topics']);
   const [filterTopicId, setFilterTopicId] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const completingRef = useRef(new Set());
 
-  const load = async () => {
-    const [sess, sub, top] = await Promise.all([
-      api.get('/sessions'),
-      api.get('/subjects'),
-      api.get('/topics'),
-    ]);
-    setSessions(sess.data);
-    setSubjects(sub.data);
-    setTopics(top.data);
-  };
-
-  useEffect(() => {
-    load().catch(console.error);
-  }, []);
 
   const filtered = useMemo(() => {
     if (!filterTopicId) return sessions;
@@ -47,7 +32,8 @@ export default function SessionsPage() {
     if (!ok) return;
     try {
       await api.delete(`/sessions/${id}`);
-      await load();
+      setSessions((prev) => prev.filter((s) => s._id !== id));
+      toast('Session deleted', 'success');
     } catch (e) {
       console.error(e);
       toast(getFriendlyErrorMessage(e, "We couldn't delete that session."), 'error');
@@ -71,11 +57,15 @@ export default function SessionsPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto p-6 md:p-10 space-y-8">
+      {dataError && <p role="alert">{dataError} <button onClick={() => load()} className="fun-button-secondary">Retry</button></p>}
       {createOpen && (
         <CreateEntityModal
           type="session"
           onClose={() => setCreateOpen(false)}
-          onSuccess={load}
+          onSuccess={() => {
+            load();
+            toast('Session added', 'success');
+          }}
           userObjectId={user.id}
           subjects={subjects}
           topics={topics}
@@ -130,8 +120,8 @@ export default function SessionsPage() {
               return (
                 <tr key={s._id} className="border-b border-border-color last:border-0 hover:bg-bg-card/50">
                   <td className="p-3 font-mono text-xs whitespace-nowrap align-top">
-                    <div>{moment(s.date).format('MMM D, YYYY')}</div>
-                    <SessionStudyTimer key={s._id} session={s} onComplete={() => mark(s._id, 'completed')} />
+                    <div>{moment.utc(s.date).format('MMM D, YYYY')}</div>
+                    <SessionStudyTimer session={s} />
                   </td>
                   <td className="p-3 font-serif">
                     <span className="inline-flex items-center gap-2">

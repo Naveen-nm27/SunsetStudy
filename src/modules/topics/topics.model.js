@@ -39,9 +39,14 @@ const topicSchema = new Schema(
     lastStudiedAt: {
       type: Date,
     },
+    masteredAt: { type: Date, default: null },
+    masterySource: { type: String, enum: ['manual', 'reviews'], default: null },
+    continueStudying: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+topicSchema.index({ userObjectId: 1, nextReviewDate: 1 });
+topicSchema.index({ userObjectId: 1, createdAt: -1 });
 export const Topic = mongoose.model("Topic", topicSchema);
 

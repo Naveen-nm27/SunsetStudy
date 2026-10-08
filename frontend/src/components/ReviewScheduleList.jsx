@@ -11,7 +11,7 @@ export default function ReviewScheduleList({ topic, sessions, onScheduleReview }
 
   if (!topic) return null;
 
-  if (completions.length === 0) {
+  if (completions.length === 0 && reviews.length === 0) {
     return (
       <div className="fun-card p-4 md:p-6">
         <p className="font-serif text-base text-text-main mb-1">Review schedule</p>
@@ -31,7 +31,7 @@ export default function ReviewScheduleList({ topic, sessions, onScheduleReview }
         <div>
           <h3 className="font-serif text-lg font-semibold text-text-main">Review schedule</h3>
           <p className="font-mono text-xs uppercase text-text-muted mt-1 leading-relaxed">
-            Dates to revisit this topic and beat the forgetting curve. Plan a session from any row.
+            Dates end at your final mastery review. Future dates assume you complete each review on time.
           </p>
         </div>
       </div>
@@ -67,8 +67,8 @@ export default function ReviewScheduleList({ topic, sessions, onScheduleReview }
             : r.isPast
               ? 'Overdue'
               : r.isNext
-                ? 'Next up'
-                : `Review ${r.reviewNumber}`;
+                ? (r.isFinal ? 'Final review' : 'Next up')
+                : r.isFinal ? 'Final review' : `Review ${r.reviewNumber}`;
 
           return (
             <li
@@ -112,6 +112,7 @@ export default function ReviewScheduleList({ topic, sessions, onScheduleReview }
           );
         })}
       </ul>
+      {reviews.length === 0 && <p className="text-sm text-text-muted">No further reviews scheduled. Choose Keep studying above to resume optional reviews.</p>}
     </div>
   );
 }

@@ -24,7 +24,7 @@ export const createSubject = async (req, res) => {
     const subject = await createSubjectService({ ...req.body, userObjectId: userId });
     res.status(201).json(subject);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -33,7 +33,7 @@ export const getSubjects = async (req, res) => {
     const subjects = await getSubjectsService(userFilter(req, req.query));
     res.status(200).json(subjects);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -46,7 +46,7 @@ export const getSubjectById = async (req, res) => {
     const subject = await getSubjectByIdService(req.params.id);
     res.status(200).json(subject);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -60,7 +60,7 @@ export const updateSubject = async (req, res) => {
     if (!subject) return res.status(404).json(notFound().body);
     res.status(200).json(subject);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
@@ -73,6 +73,6 @@ export const deleteSubject = async (req, res) => {
     const result = await deleteSubjectByIdService(req.params.id);
     res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
